@@ -1,0 +1,22 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Config:
+    FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
+    MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+    
+    # Models
+    MODEL_SMALL = "mistral:mistral-small-latest"
+    MODEL_MEDIUM = "mistral:mistral-medium-latest"
+    MODEL_LARGE = "mistral:mistral-large-latest"
+
+    def validate(self):
+        if not self.MISTRAL_API_KEY:
+            raise ValueError("MISTRAL_API_KEY is not set in environment variables.")
+        if not self.FIRECRAWL_API_KEY:
+            print("Warning: FIRECRAWL_API_KEY is not set. Research capabilities may be limited.")
+
+config = Config()
