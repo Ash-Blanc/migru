@@ -59,10 +59,11 @@ def create_migru_agent():
         model=config.MODEL_SMALL,
         db=db,
         memory_manager=memory_manager,
-        enable_agentic_memory=True,
+        enable_user_memories=True, # Best Practice: Use automatic memory for efficiency
         add_history_to_context=True,
         add_memories_to_context=True,
         add_culture_to_context=True,
+        add_datetime_to_context=True, # Best Practice: Temporal grounding
         update_cultural_knowledge=True,
         num_history_runs=5,
         tools=[ReasoningTools(add_instructions=True)],
@@ -99,7 +100,7 @@ def create_relief_team():
         model=config.MODEL_LARGE,
         members=[migru, researcher],
         db=db,
-        enable_agentic_memory=True,
+        enable_user_memories=True, # Best Practice: Consistent memory strategy
         add_memories_to_context=True,
         instructions=[
             "COORDINATION RULES:",
