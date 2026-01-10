@@ -37,6 +37,9 @@ def create_research_agent(model: Optional[str] = None):
             3. Provide concise summaries.
         """),
         show_tool_calls=False,
+        retries=config.RETRIES,
+        delay_between_retries=config.DELAY_BETWEEN_RETRIES,
+        exponential_backoff=config.EXPONENTIAL_BACKOFF,
     )
 
 def create_migru_agent(model: Optional[str] = None):
@@ -61,6 +64,9 @@ def create_migru_agent(model: Optional[str] = None):
             FEEDBACK: Ask "Does that sound doable?".
         """),
         markdown=True,
+        retries=config.RETRIES,
+        delay_between_retries=config.DELAY_BETWEEN_RETRIES,
+        exponential_backoff=config.EXPONENTIAL_BACKOFF,
     )
 
 def create_relief_team(model: Optional[str] = None):
@@ -76,6 +82,9 @@ def create_relief_team(model: Optional[str] = None):
             "2. Migru translates findings.",
         ],
         show_tool_calls=False,
+        retries=config.RETRIES,
+        delay_between_retries=config.DELAY_BETWEEN_RETRIES,
+        exponential_backoff=config.EXPONENTIAL_BACKOFF,
     )
 
 # Direct instantiation using strings

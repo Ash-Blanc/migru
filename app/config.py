@@ -19,6 +19,11 @@ class Config:
     MODEL_LARGE = "mistral:mistral-large-latest"
     MODEL_FALLBACK = "cerebras:llama3.1-8b"
     MODEL_OPENROUTER_FALLBACK = "openrouter:google/gemini-2.0-flash-001"
+    
+    # Resilience Settings
+    RETRIES = 3
+    DELAY_BETWEEN_RETRIES = 2
+    EXPONENTIAL_BACKOFF = True
 
     def validate(self):
         if not self.MISTRAL_API_KEY:
