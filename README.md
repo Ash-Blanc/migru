@@ -1,19 +1,23 @@
 # Migru
 
-## Setup
+Welcome to Migru! Follow these simple steps to get started.
 
-To set up the environment and install dependencies, run the setup script:
+## How to Start
+
+First, run this command to set everything up automatically:
 
 ```bash
 ./setup.sh
 ```
 
-This script will install `uv` (if not already installed) and sync the project dependencies.
+This will check for necessary tools and install them for you.
 
-## Usage
+## Run the App
 
-After setup, you can run the application using:
+Once the setup is done, you can start the application with:
 
 ```bash
 uv run main.py
 ```
+
+That's it!
