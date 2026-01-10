@@ -9,6 +9,10 @@ logger = get_logger("migru.main")
 
 def run_app():
     try:
+        # Ensure Redis is running for memory storage
+        from app.db import ensure_redis_running
+        ensure_redis_running()
+        
         # Validate configuration
         try:
             config.validate()
