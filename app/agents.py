@@ -37,7 +37,7 @@ def create_research_agent():
             -   If a tool fails, report what you tried and move to the next best method.
             -   Never make up information if tools return nothing. State that you couldn't find specific details.
         """),
-        show_tool_calls=True, # Enable visibility for debugging/user trust
+        show_tool_calls=False,
     )
 
 def create_migru_agent():
@@ -97,7 +97,7 @@ def create_relief_team():
             "4. Migru synthesizes the findings into a friendly response.",
             "5. Ensure seamless handoffs. Migru should say 'Let me check on that...' before Research starts.",
         ],
-        show_tool_calls=True,
+        show_tool_calls=False,
     )
 
 # Global team instance

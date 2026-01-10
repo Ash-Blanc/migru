@@ -9,8 +9,6 @@ logger = get_logger("migru.main")
 
 def run_app():
     try:
-        logger.info("Starting Migru Application...")
-        
         # Validate configuration
         try:
             config.validate()
@@ -24,8 +22,6 @@ def run_app():
         if config.MISTRAL_API_KEY:
             os.environ["MISTRAL_API_KEY"] = config.MISTRAL_API_KEY
             
-        logger.info("Environment configured successfully.")
-        
         print("\n👋 Hey! I'm Migru, your cheerful buddy. Let's chat!")
         print("Type 'exit' to end, 'bye' to say goodbye.\n")
         

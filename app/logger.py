@@ -6,11 +6,11 @@ def get_logger(name: str):
     logger = logging.getLogger(name)
     
     if not logger.handlers:
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.WARNING)
         
         # Create console handler
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(logging.WARNING)
         
         # Create formatter
         formatter = logging.Formatter(
