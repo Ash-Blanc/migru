@@ -13,12 +13,12 @@ class Config:
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
     
-    # Models
+    # Models (using 'provider:model_id' format for Agno automatic resolution)
     MODEL_SMALL = "mistral:mistral-small-latest"
     MODEL_MEDIUM = "mistral:mistral-medium-latest"
     MODEL_LARGE = "mistral:mistral-large-latest"
-    MODEL_FALLBACK = "llama3.1-8b" # Cerebras fallback
-    MODEL_OPENROUTER_FALLBACK = "google/gemini-2.0-flash-001" # OpenRouter fallback
+    MODEL_FALLBACK = "cerebras:llama3.1-8b"
+    MODEL_OPENROUTER_FALLBACK = "openrouter:google/gemini-2.0-flash-001"
 
     def validate(self):
         if not self.MISTRAL_API_KEY:
