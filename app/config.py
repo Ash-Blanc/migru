@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+from app.exceptions import ConfigurationError
+# Import logger locally in validate to avoid circular imports if logger uses config later (though currently it doesn't)
 
 load_dotenv()
 
@@ -15,8 +17,9 @@ class Config:
 
     def validate(self):
         if not self.MISTRAL_API_KEY:
-            raise ValueError("MISTRAL_API_KEY is not set in environment variables.")
+            raise ConfigurationError("MISTRAL_API_KEY is not set in environment variables.")
         if not self.FIRECRAWL_API_KEY:
+            # We just print/log a warning here, not raise an error, as it's optional but recommended
             print("Warning: FIRECRAWL_API_KEY is not set. Research capabilities may be limited.")
 
 config = Config()
