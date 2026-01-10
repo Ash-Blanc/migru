@@ -92,11 +92,17 @@ def create_relief_team(model: Optional[Model] = None):
         show_tool_calls=False,
     )
 
-# Global team instance (Primary)
+# Primary Team
 relief_team = create_relief_team()
 
-# Fallback team instance (using Cerebras)
-fallback_team = None
-cerebras_model = model_factory.get_fallback_model()
+# Fallback 1: Cerebras
+cerebras_team = None
+cerebras_model = model_factory.get_cerebras_fallback()
 if cerebras_model:
-    fallback_team = create_relief_team(model=cerebras_model)
+    cerebras_team = create_relief_team(model=cerebras_model)
+
+# Fallback 2: OpenRouter
+openrouter_team = None
+openrouter_model = model_factory.get_openrouter_fallback()
+if openrouter_model:
+    openrouter_team = create_relief_team(model=openrouter_model)

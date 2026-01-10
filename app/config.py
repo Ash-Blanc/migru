@@ -10,13 +10,15 @@ class Config:
     MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
     OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
     CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     # Models
     MODEL_SMALL = "mistral:mistral-small-latest"
     MODEL_MEDIUM = "mistral:mistral-medium-latest"
     MODEL_LARGE = "mistral:mistral-large-latest"
-    MODEL_FALLBACK = "llama3.1-8b" # Fast fallback
+    MODEL_FALLBACK = "llama3.1-8b" # Cerebras fallback
+    MODEL_OPENROUTER_FALLBACK = "google/gemini-2.0-flash-001" # OpenRouter fallback
 
     def validate(self):
         if not self.MISTRAL_API_KEY:
@@ -27,6 +29,8 @@ class Config:
         if not self.OPENWEATHER_API_KEY:
              print("Warning: OPENWEATHER_API_KEY is not set. Weather capabilities will be disabled.")
         if not self.CEREBRAS_API_KEY:
-             print("Warning: CEREBRAS_API_KEY is not set. Fallback capabilities will be disabled.")
+             print("Warning: CEREBRAS_API_KEY is not set. Cerebras fallback disabled.")
+        if not self.OPENROUTER_API_KEY:
+             print("Warning: OPENROUTER_API_KEY is not set. OpenRouter fallback disabled.")
 
 config = Config()
