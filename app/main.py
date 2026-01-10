@@ -9,10 +9,11 @@ from rich.markdown import Markdown
 from rich.prompt import Prompt
 from rich import print as rprint
 from app.config import config
-from app.agents import relief_team, cerebras_team, openrouter_team
+from app.agents import relief_team, cerebras_team, openrouter_team, personalization_engine
 from app.logger import get_logger, suppress_verbose_logging
 from app.exceptions import MigruError
 from app.utils import performance_monitor, timing_decorator, memory_usage_decorator
+from app.services.user_insights import insight_extractor
 
 # Suppress verbose logging from third-party libraries
 suppress_verbose_logging()
@@ -151,10 +152,31 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
             if not user_input.strip():
                 continue
             
+            # Extract insights from user message (background, non-blocking)
+            try:
+                insights = insight_extractor.extract_from_message(
+                    user_id=user_name, message=user_input
+                )
+                if insights:
+                    insight_extractor.update_user_profile_from_insights(
+                        user_name, insights
+                    )
+            except Exception as e:
+                logger.debug(f"Insight extraction failed (non-critical): {e}")
+            
             # Show thinking indicator briefly
             console.print()
             with console.status("[dim italic]🌸 Migru is reflecting...[/dim italic]", spinner="dots"):
                 try:
+                    # Get personalization context for this user
+                    try:
+                        user_context = personalization_engine.get_personalization_context(user_name)
+                        if user_context and conversation_count > 0:
+                            # Inject context for subsequent messages (not first)
+                            logger.debug(f"Using personalized context for {user_name}")
+                    except Exception as e:
+                        logger.debug(f"Personalization context failed: {e}")
+                    
                     # Get response with streaming for better perceived speed
                     response = team.run(user_input, stream=config.STREAMING)
                     
