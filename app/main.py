@@ -1,75 +1,354 @@
 import os
 import sys
+import time
+import argparse
+from typing import Optional
+from rich.console import Console
+from rich.panel import Panel
+from rich.markdown import Markdown
+from rich.prompt import Prompt
+from rich import print as rprint
 from app.config import config
 from app.agents import relief_team, cerebras_team, openrouter_team
 from app.logger import get_logger
 from app.exceptions import MigruError
+from app.utils import performance_monitor, timing_decorator, memory_usage_decorator
 
 logger = get_logger("migru.main")
+console = Console()
 
-def run_app():
+
+def setup_environment() -> bool:
+    """Setup environment variables and validate configuration."""
+    performance_monitor.start_timer("environment_setup")
+
+    try:
+        # Validate configuration
+        config.validate()
+        logger.info("Configuration validated successfully")
+    except MigruError as e:
+        logger.error(f"Configuration Error: {e}")
+        error_panel = Panel(
+            f"[bold red]Configuration Error:[/bold red]\n\n"
+            f"[white]{e}[/white]\n\n"
+            "[dim]Please check your .env file and ensure all required API keys are set.[/dim]",
+            title="[bold red]❌ Setup Failed[/bold red]",
+            border_style="red",
+            padding=(1, 2),
+        )
+        console.print(error_panel)
+        return False
+
+    # Set environment variables
+    env_vars = {
+        "FIRECRAWL_API_KEY": config.FIRECRAWL_API_KEY,
+        "MISTRAL_API_KEY": config.MISTRAL_API_KEY,
+        "OPENWEATHER_API_KEY": config.OPENWEATHER_API_KEY,
+        "CEREBRAS_API_KEY": config.CEREBRAS_API_KEY,
+        "OPENROUTER_API_KEY": config.OPENROUTER_API_KEY,
+    }
+
+    for key, value in env_vars.items():
+        if value:
+            os.environ[key] = value
+            logger.debug(f"Set {key}")
+        else:
+            logger.warning(f"{key} not configured")
+
+    performance_monitor.end_timer("environment_setup")
+    return True
+
+
+def display_banner(show_welcome: bool = True):
+    """Display ASCII art banner and welcome message."""
+    performance_monitor.start_timer("banner_display")
+
+    console.print()
+    try:
+        with open("app/ascii-text-art.txt", "r") as f:
+            banner = f.read().strip()
+            console.print(f"[bold cyan]{banner}[/bold cyan]")
+    except FileNotFoundError:
+        logger.debug("Banner file not found, skipping")
+        console.print("[bold cyan]MIGRU[/bold cyan]", justify="center")
+
+    if show_welcome:
+        console.print()
+        welcome_panel = Panel(
+            "[bold white]Welcome! I'm Migru, your wise and curious companion.[/bold white]\n\n"
+            "[dim]I'm here to walk alongside you, exploring what brings comfort and clarity.\n"
+            "Let's discover together what works for you.[/dim]\n\n"
+            "[italic cyan]💭 Type your thoughts to begin our conversation\n"
+            "🚪 Type 'exit' or press Ctrl+C to end[/italic cyan]",
+            title="[bold magenta]🌸 A Gentle Space[/bold magenta]",
+            border_style="magenta",
+            padding=(1, 2),
+        )
+        console.print(welcome_panel)
+        console.print()
+
+    performance_monitor.end_timer("banner_display")
+
+
+def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mistral AI"):
+    """Run an improved CLI session with better UX."""
+    performance_monitor.start_timer("cli_session")
+    
+    if team is None:
+        team = relief_team
+
+    try:
+        # Custom conversation loop with better UX
+        conversation_count = 0
+        
+        while True:
+            # Get user input with a calming prompt
+            console.print()
+            if conversation_count == 0:
+                prompt_text = f"[bold green]You[/bold green] [dim]✨[/dim]"
+            else:
+                prompt_text = f"[bold green]You[/bold green] [dim]→[/dim]"
+            
+            user_input = Prompt.ask(prompt_text, console=console)
+            
+            # Handle exit commands
+            if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
+                console.print()
+                farewell = Panel(
+                    f"[bold white]Thank you for sharing this time with me, {user_name}.[/bold white]\n\n"
+                    "[dim]May you find comfort and clarity on your journey.[/dim]\n\n"
+                    "[italic cyan]Take gentle care of yourself. 🌸[/italic cyan]",
+                    title="[bold magenta]Until we meet again[/bold magenta]",
+                    border_style="magenta",
+                    padding=(1, 2),
+                )
+                console.print(farewell)
+                console.print()
+                break
+            
+            # Handle help command
+            if user_input.lower() in ["help", "?"]:
+                help_panel = Panel(
+                    "[bold white]How to talk with Migru:[/bold white]\n\n"
+                    "💭 Simply share what's on your mind - there's no wrong way to start\n"
+                    "🔍 Ask questions about wellness, stress, or what might help\n"
+                    "📖 Request research on techniques that interest you\n"
+                    "🌤️  Mention how weather or environment affects you\n\n"
+                    "[italic cyan]Commands:[/italic cyan]\n"
+                    "  • [cyan]exit[/cyan], [cyan]quit[/cyan], [cyan]bye[/cyan] - End conversation\n"
+                    "  • [cyan]help[/cyan], [cyan]?[/cyan] - Show this message",
+                    title="[bold cyan]💡 Guidance[/bold cyan]",
+                    border_style="cyan",
+                    padding=(1, 2),
+                )
+                console.print(help_panel)
+                continue
+            
+            # Skip empty inputs
+            if not user_input.strip():
+                continue
+            
+            # Show thinking indicator
+            console.print()
+            console.print("[dim italic]🌸 Migru is reflecting...[/dim italic]")
+            
+            try:
+                # Get response from the team
+                response = team.run(user_input, stream=False)
+                
+                # Display response in a beautiful panel
+                console.print()
+                response_panel = Panel(
+                    Markdown(response.content),
+                    title="[bold magenta]🌸 Migru[/bold magenta]",
+                    subtitle=f"[dim]{system_name}[/dim]",
+                    border_style="magenta",
+                    padding=(1, 2),
+                )
+                console.print(response_panel)
+                
+                conversation_count += 1
+                
+            except Exception as e:
+                logger.error(f"Error during conversation: {e}")
+                console.print()
+                console.print(
+                    "[yellow]⚠️  I'm having trouble connecting right now. Let's try that again.[/yellow]"
+                )
+                continue
+        
+        performance_monitor.end_timer("cli_session")
+        logger.info(f"Session ended by user: {user_name}")
+        return True
+        
+    except KeyboardInterrupt:
+        console.print()
+        console.print("\n[dim]Session interrupted. Take care! 🌸[/dim]\n")
+        logger.info(f"Session interrupted by user: {user_name}")
+        performance_monitor.end_timer("cli_session")
+        return True
+    except Exception as e:
+        logger.error(f"Session failed: {e}")
+        console.print(f"\n[red]❌ Session error: {e}[/red]\n")
+        performance_monitor.end_timer("cli_session")
+        return False
+
+
+@timing_decorator
+@memory_usage_decorator
+def run_app(args: Optional[argparse.Namespace] = None):
+    """Main application entry point with improved error handling and performance monitoring."""
+    performance_monitor.start_timer("total_startup")
+
     try:
         # Ensure Redis is running for memory storage
+        logger.info("Checking Redis connection...")
         from app.db import ensure_redis_running
-        ensure_redis_running()
-        
-        # Validate configuration
-        try:
-            config.validate()
-        except MigruError as e:
-            logger.error(f"Configuration Error: {e}")
+
+        if not ensure_redis_running():
+            console.print(
+                "[yellow]⚠️  Warning: Redis is not available. Memory features will be limited.[/yellow]"
+            )
+            logger.warning("Redis not available")
+
+        # Setup environment
+        if not setup_environment():
             sys.exit(1)
-        
-        # Set environment variables
-        if config.FIRECRAWL_API_KEY:
-            os.environ["FIRECRAWL_API_KEY"] = config.FIRECRAWL_API_KEY
-        if config.MISTRAL_API_KEY:
-            os.environ["MISTRAL_API_KEY"] = config.MISTRAL_API_KEY
-        if config.OPENWEATHER_API_KEY:
-            os.environ["OPENWEATHER_API_KEY"] = config.OPENWEATHER_API_KEY
-        if config.CEREBRAS_API_KEY:
-            os.environ["CEREBRAS_API_KEY"] = config.CEREBRAS_API_KEY
-        if config.OPENROUTER_API_KEY:
-            os.environ["OPENROUTER_API_KEY"] = config.OPENROUTER_API_KEY
-            
-        print("\n👋 Hey! I'm Migru, your cheerful buddy. Let's chat!")
-        print("Type 'exit' to end, 'bye' to say goodbye.\n")
-        
-        # Primary execution loop with multi-tier fallback
-        try:
-            relief_team.cli_app(user="Friend", emoji="🌸", stream=True)
-        except Exception as e:
-            logger.error(f"Primary team (Mistral) failed: {e}")
-            
-            # Tier 2: Cerebras
-            if cerebras_team:
-                print("\n⚠️  Primary system down. Switching to Backup Tier 1 (Cerebras)...")
-                try:
-                    cerebras_team.cli_app(user="Friend", emoji="⚡", stream=True)
-                except Exception as e2:
-                    logger.error(f"Backup Tier 1 (Cerebras) failed: {e2}")
-                    
-                    # Tier 3: OpenRouter
-                    if openrouter_team:
-                        print("\n⚠️  Secondary system down. Switching to Backup Tier 2 (OpenRouter)...")
-                        openrouter_team.cli_app(user="Friend", emoji="🌐", stream=True)
-                    else:
-                        print("No more fallbacks available.")
-                        raise e2
-            elif openrouter_team:
-                # Direct to Tier 3 if Tier 2 not configured
-                print("\n⚠️  Primary system down. Switching to Backup (OpenRouter)...")
-                openrouter_team.cli_app(user="Friend", emoji="🌐", stream=True)
-            else:
-                print("No fallbacks configured.")
-                raise e
+
+        # Display banner (can be suppressed with --quiet flag)
+        show_welcome = not (args and hasattr(args, "quiet") and args.quiet)
+        display_banner(show_welcome)
+
+        # Display available systems in a nice format
+        systems = []
+        if relief_team:
+            systems.append("✓ Mistral AI (Primary)")
+        if cerebras_team:
+            systems.append("✓ Cerebras (High-speed backup)")
+        if openrouter_team:
+            systems.append("✓ OpenRouter (Emergency fallback)")
+
+        if systems and show_welcome:
+            systems_panel = Panel(
+                "\n".join(f"[green]{s}[/green]" for s in systems),
+                title="[bold cyan]🔧 Available Systems[/bold cyan]",
+                border_style="cyan",
+                padding=(0, 2),
+            )
+            console.print(systems_panel)
+
+        # Primary execution loop with improved fallback UX
+        user_name = getattr(args, "user", "Friend") if args else "Friend"
+
+        # Try primary system
+        if relief_team:
+            if show_welcome:
+                console.print("\n[dim]🌸 Connecting to Mistral AI...[/dim]\n")
+            if run_cli_session(user_name, relief_team, "Mistral AI"):
+                performance_monitor.end_timer("total_startup")
+                return
+
+        # Fallback to Tier 2
+        if cerebras_team:
+            console.print(
+                "\n[yellow]⚡ Switching to Cerebras AI for higher speed...[/yellow]\n"
+            )
+            if run_cli_session(user_name, cerebras_team, "Cerebras AI"):
+                performance_monitor.end_timer("total_startup")
+                return
+
+        # Fallback to Tier 3
+        if openrouter_team:
+            console.print(
+                "\n[yellow]🌐 Switching to OpenRouter as emergency backup...[/yellow]\n"
+            )
+            if run_cli_session(user_name, openrouter_team, "OpenRouter"):
+                performance_monitor.end_timer("total_startup")
+                return
+
+        # No systems available
+        error_panel = Panel(
+            "[bold red]No AI systems are currently available.[/bold red]\n\n"
+            "Please check your API configuration in the .env file:\n"
+            "  • MISTRAL_API_KEY (required)\n"
+            "  • CEREBRAS_API_KEY (optional backup)\n"
+            "  • OPENROUTER_API_KEY (optional emergency)",
+            title="[bold red]❌ Connection Error[/bold red]",
+            border_style="red",
+            padding=(1, 2),
+        )
+        console.print(error_panel)
+        logger.error("No AI systems available")
 
     except KeyboardInterrupt:
-        print("\nSee you later! Take care! 🌸")
-        logger.info("Application stopped by user.")
+        console.print("\n[dim]👋 Session interrupted. Take care! 🌸[/dim]\n")
+        logger.info("Application stopped by user during startup")
     except Exception as e:
-        logger.exception(f"An unexpected error occurred: {e}")
-        print(f"\nOops! Something went wrong. Check the logs for details.")
+        logger.exception(f"Unexpected error during startup: {e}")
+        error_panel = Panel(
+            f"[bold red]An unexpected error occurred:[/bold red]\n\n"
+            f"[white]{e}[/white]\n\n"
+            "[dim]Check the logs for detailed information.[/dim]",
+            title="[bold red]❌ Error[/bold red]",
+            border_style="red",
+            padding=(1, 2),
+        )
+        console.print(error_panel)
+    finally:
+        performance_monitor.end_timer("total_startup")
+
+        # Print performance summary if verbose
+        if args and hasattr(args, "verbose") and args.verbose:
+            console.print("\n[bold cyan]Performance Metrics:[/bold cyan]")
+            console.print(performance_monitor.get_report())
+
+
+def create_argument_parser() -> argparse.ArgumentParser:
+    """Create command line argument parser."""
+    parser = argparse.ArgumentParser(
+        description="Migru - Wise companion for wellness and relief",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  uv run -m app.main                    # Start with default settings
+  uv run -m app.main --user Alex        # Use custom username
+  uv run -m app.main --quiet            # Skip welcome message
+  uv run -m app.main --verbose          # Show performance metrics
+        """,
+    )
+
+    parser.add_argument(
+        "--user", "-u", default="Friend", help="Your preferred name (default: Friend)"
+    )
+
+    parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Suppress welcome messages and banners",
+    )
+
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show detailed performance metrics and logs",
+    )
+
+    parser.add_argument("--version", action="version", version="Migru 0.1.0")
+
+    return parser
+
 
 if __name__ == "__main__":
-    run_app()
+    parser = create_argument_parser()
+    args = parser.parse_args()
+
+    # Set logging level based on verbose flag
+    if args.verbose:
+        import logging
+
+        logging.getLogger("migru").setLevel(logging.INFO)
+        logging.getLogger("app").setLevel(logging.INFO)
+
+    run_app(args)

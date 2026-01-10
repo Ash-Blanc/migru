@@ -56,7 +56,7 @@ docker-compose up --build
 -   **Tools**: Firecrawl, DuckDuckGo, YouTube
 
 ### Common Issues
--   **Redis Connection Error**: 
-    -   *Local Mode*: Run `redis-server` in another terminal.
-    -   *Docker Mode*: Happens automatically.
+-   **Redis Connection**: 
+    -   *Local Mode*: The app attempts to start `redis-server` automatically. If it fails, ensure Redis is installed on your system.
+    -   *Docker Mode*: Handled automatically by Docker Compose.
 -   **API Key Errors**: Ensure your `.env` file is saved and contains valid keys (no quotes needed around values).

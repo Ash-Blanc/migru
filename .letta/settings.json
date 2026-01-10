@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /home/ash_blanc/src/migru && uv run pytest tests/ -v)",
+      "Bash(cd /home/ash_blanc/src/migru && uv run pytest tests/test_config.py tests/test_utils.py -v)",
+      "Bash(git -C:*)",
+      "Edit(app/**)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(cd /home/ash_blanc/src/migru && uv add rich)",
+      "Bash(cd /home/ash_blanc/src/migru && uv pip install rich)",
+      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"import rich; print('rich version:', rich.__version__)\")",
+      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.main import display_banner\ndisplay_banner(show_welcome=True)\n\")",
+      "Bash(git add:*)"
+    ]
+  }
+}
