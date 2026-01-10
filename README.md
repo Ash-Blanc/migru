@@ -34,7 +34,7 @@ FIRECRAWL_API_KEY=your_actual_key_here
 Once the setup is done, you can start the application with:
 
 ```bash
-uv run main.py
+uv run -m app.main
 ```
 
 That's it!

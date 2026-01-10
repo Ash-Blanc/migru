@@ -2,7 +2,7 @@ import os
 from app.config import config
 from app.agents import relief_team
 
-if __name__ == "__main__":
+def run_app():
     try:
         # Validate configuration
         config.validate()
@@ -23,3 +23,7 @@ if __name__ == "__main__":
         )
     except Exception as e:
         print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    run_app()
+

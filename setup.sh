@@ -36,4 +36,4 @@ else
 fi
 
 echo "Setup complete! You can now run the application with:"
-echo "uv run main.py"
+echo "uv run -m app.main"
