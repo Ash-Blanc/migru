@@ -21,6 +21,8 @@ def run_app():
             os.environ["FIRECRAWL_API_KEY"] = config.FIRECRAWL_API_KEY
         if config.MISTRAL_API_KEY:
             os.environ["MISTRAL_API_KEY"] = config.MISTRAL_API_KEY
+        if config.OPENWEATHER_API_KEY:
+            os.environ["OPENWEATHER_API_KEY"] = config.OPENWEATHER_API_KEY
             
         print("\n👋 Hey! I'm Migru, your cheerful buddy. Let's chat!")
         print("Type 'exit' to end, 'bye' to say goodbye.\n")

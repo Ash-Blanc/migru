@@ -8,6 +8,7 @@ load_dotenv()
 class Config:
     FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
     MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+    OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     # Models
@@ -21,5 +22,7 @@ class Config:
         if not self.FIRECRAWL_API_KEY:
             # We just print/log a warning here, not raise an error, as it's optional but recommended
             print("Warning: FIRECRAWL_API_KEY is not set. Research capabilities may be limited.")
+        if not self.OPENWEATHER_API_KEY:
+             print("Warning: OPENWEATHER_API_KEY is not set. Weather capabilities will be disabled.")
 
 config = Config()

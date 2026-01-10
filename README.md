@@ -17,6 +17,7 @@ Open the newly created `.env` file and add your keys:
 ```env
 MISTRAL_API_KEY=...    # Get from https://console.mistral.ai/
 FIRECRAWL_API_KEY=...  # Get from https://www.firecrawl.dev/
+OPENWEATHER_API_KEY=... # Get from https://openweathermap.org/api
 ```
 
 **3. Run**
