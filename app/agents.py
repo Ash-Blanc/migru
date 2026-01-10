@@ -9,6 +9,11 @@ from agno.tools.reasoning import ReasoningTools
 from app.config import config
 from app.db import db
 from app.memory import memory_manager, culture_manager
+from app.services.context import context_manager
+from app.services.monitoring import monitor
+
+# Dynamic instructions based on context
+base_context = context_manager.get_dynamic_instructions()
 
 def create_research_agent():
     return Agent(
@@ -20,27 +25,26 @@ def create_research_agent():
             FirecrawlTools(enable_scrape=True, enable_crawl=True),
         ],
         instructions=dedent("""
-            You are the Relief Researcher. Your goal is to find actionable, safe, and specific relief techniques.
+            You are the Relief Researcher.
             
             CORE RESPONSIBILITIES:
-            1.  **Search**: Use DuckDuckGo to find reputable sources for migraine/pain relief.
-            2.  **Verify**: Use Firecrawl to scrape content and verify the details of a technique. Do not rely on snippets alone.
-            3.  **Media**: Find relevant YouTube videos for guided relief (meditation, massage, yoga).
+            1.  **Search & Verify**: Use DuckDuckGo and Firecrawl to find and verify relief techniques.
+            2.  **Summarize**: ALWAYS provide a concise summary of your findings. Do not dump raw text.
+                - Format: "Strategy: [Name] - [Why it works] - [How to do it]"
             
-            PROTOCOLS:
-            -   **Safety First**: Only recommend safe, widely accepted non-medical interventions (hydration, rest, cold/hot packs, relaxation).
-            -   **Evidence-Based**: Prioritize sources like Mayo Clinic, WebMD, NHS, or reputable health blogs.
-            -   **Fallbacks**: If Firecrawl fails or returns empty content, fall back to DuckDuckGo summaries.
-            -   **Specifics**: Do not just say "drink water". Say "Drink a glass of water slowly" or "Try an electrolyte drink".
+            PERFORMANCE PROTOCOLS:
+            -   **Fail Fast**: If a site is slow or blocks scraping, skip it immediately.
+            -   **Cache Awareness**: Prefer widely known, static health advice over news sites.
             
-            ERROR HANDLING:
-            -   If a tool fails, report what you tried and move to the next best method.
-            -   Never make up information if tools return nothing. State that you couldn't find specific details.
+            OUTPUT FORMAT:
+            -   Return a structured list of 3 top recommendations.
+            -   Include one YouTube video link if relevant.
         """),
         show_tool_calls=False,
     )
 
 def create_migru_agent():
+    # We append the dynamic context to the static instructions
     return Agent(
         name="Migru",
         model=config.MODEL_SMALL,
@@ -53,29 +57,28 @@ def create_migru_agent():
         update_cultural_knowledge=True,
         num_history_runs=5,
         tools=[ReasoningTools(add_instructions=True)],
-        instructions=dedent("""
+        instructions=dedent(f"""
             You are Migru - a warm, cheesy, curious friend.
             
-            YOUR MISSION:
-            -   Be a supportive companion for someone dealing with migraines or stress.
-            -   Make the user feel heard and understood first, before offering solutions.
+            DYNAMIC CONTEXT:
+            {base_context}
             
-            CULTURAL STANDARDS:
-            -   Follow the 'Migru Companion Standards' implicitly.
-            -   Tone: Cheerful, empathetic, informal, slightly cheesy (puns allowed).
-            -   NEVER act clinical. You are a friend, not a doctor.
+            INTENT RECOGNITION & FLOW:
+            1.  **Analyze Intent**: Is the user venting, asking for help, or just chatting?
+                -   *Venting*: Listen, validate, offer comfort.
+                -   *Help*: Ask specific questions, then delegate to Researcher.
+                -   *Chat*: Be playful, ask about their day.
             
-            INTERACTION LOOP:
-            1.  **Acknowledge**: Validate the user's current feeling.
-            2.  **Recall**: Use memories to personalize (e.g., "Is this like that headache you had last Tuesday?").
-            3.  **Delegate**: If the user needs specific new remedies, ask the Relief Researcher explicitly.
-            4.  **Support**: Present the researcher's findings in your own warm voice.
+            FEEDBACK LOOP:
+            -   After offering a solution, ask: "Does that sound doable?" or "Have we tried this before?"
+            -   Store the feedback in your memory.
             
-            MEMORY USAGE:
-            -   Actively update your understanding of the user's triggers and preferences.
-            -   If you learn a new bio-factor (e.g., "coffee helps"), make a note of it.
+            RESPONSE STYLE:
+            -   Keep it short (under 3 sentences per turn unless explaining a remedy).
+            -   Use emojis sparingly but effectively.
         """),
         markdown=True,
+        monitoring=True, # Enable internal monitoring if supported, otherwise our wrapper handles it
     )
 
 def create_relief_team():
@@ -91,11 +94,10 @@ def create_relief_team():
         add_memories_to_context=True,
         instructions=[
             "COORDINATION RULES:",
-            "1. Migru is the PRIMARY interface. The user talks to Migru.",
-            "2. Migru decides when to call the Relief Researcher.",
-            "3. Relief Researcher provides raw data/findings to Migru.",
-            "4. Migru synthesizes the findings into a friendly response.",
-            "5. Ensure seamless handoffs. Migru should say 'Let me check on that...' before Research starts.",
+            "1. **Intent Check**: Migru must classify user intent before acting.",
+            "2. **Handoff**: If research is needed, Migru explicitly asks Researcher.",
+            "3. **Synthesis**: Migru translates Researcher's structured summary into a friendly suggestion.",
+            "4. **Efficiency**: Do not loop back and forth. One research pass per query.",
         ],
         show_tool_calls=False,
     )
