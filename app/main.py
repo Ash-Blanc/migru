@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import argparse
+from datetime import datetime
 from typing import Optional
 from rich.console import Console
 from rich.panel import Panel
@@ -14,6 +15,8 @@ from app.logger import get_logger, suppress_verbose_logging
 from app.exceptions import MigruError
 from app.utils import performance_monitor, timing_decorator, memory_usage_decorator
 from app.services.user_insights import insight_extractor
+from app.services.realtime_analytics import pattern_detector, insight_generator
+from app.streaming import process_message_for_streaming
 
 # Suppress verbose logging from third-party libraries
 suppress_verbose_logging()
@@ -164,6 +167,43 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
             except Exception as e:
                 logger.debug(f"Insight extraction failed (non-critical): {e}")
             
+            # Real-time streaming analytics (Pathway integration)
+            try:
+                # Extract event type from message
+                from app.streaming import live_monitor
+                event_type = live_monitor.extract_event_type(user_input)
+                
+                # Get environmental context (weather, time, etc.)
+                metadata = {
+                    "hour": datetime.now().hour,
+                    "day_of_week": datetime.now().weekday(),
+                }
+                
+                # Try to get weather context if available
+                try:
+                    from app.services.context import context_manager
+                    weather_data = context_manager.weather_data
+                    if weather_data:
+                        metadata["weather_pressure"] = weather_data.get("pressure")
+                        metadata["weather_temp"] = weather_data.get("temp")
+                        metadata["weather_condition"] = weather_data.get("condition")
+                except Exception as e:
+                    logger.debug(f"Weather context unavailable: {e}")
+                
+                # Record to streaming analytics
+                pattern_detector.record_event(
+                    user_id=user_name,
+                    event_type=event_type,
+                    content=user_input,
+                    metadata=metadata
+                )
+                
+                # Process for Pathway streaming (low-latency)
+                process_message_for_streaming(user_name, user_input, metadata)
+                
+            except Exception as e:
+                logger.debug(f"Streaming analytics failed (non-critical): {e}")
+            
             # Show thinking indicator briefly
             console.print()
             with console.status("[dim italic]🌸 Migru is reflecting...[/dim italic]", spinner="dots"):
@@ -205,6 +245,31 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                         console.print(response_panel)
                     
                     conversation_count += 1
+                    
+                    # Check for proactive insights (every 3+ conversations)
+                    if conversation_count >= 3 and conversation_count % 3 == 0:
+                        try:
+                            # Generate insights from patterns
+                            insights = insight_generator.generate_insights(user_name)
+                            
+                            # Share if appropriate
+                            for insight in insights:
+                                if insight_generator.should_share_now(user_name, insight):
+                                    console.print()
+                                    insight_panel = Panel(
+                                        Markdown(
+                                            f"**💡 A Pattern I've Noticed**\n\n{insight['message']}"
+                                        ),
+                                        title="[bold cyan]✨ Gentle Insight[/bold cyan]",
+                                        subtitle=f"[dim]Discovered through our conversations[/dim]",
+                                        border_style="cyan",
+                                        padding=(1, 2),
+                                    )
+                                    console.print(insight_panel)
+                                    insight_generator.mark_insight_shared(user_name)
+                                    break  # Only share one insight at a time
+                        except Exception as e:
+                            logger.debug(f"Proactive insight sharing failed: {e}")
                 
             except Exception as e:
                 logger.error(f"Error during conversation: {e}")
