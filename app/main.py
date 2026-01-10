@@ -10,9 +10,12 @@ from rich.prompt import Prompt
 from rich import print as rprint
 from app.config import config
 from app.agents import relief_team, cerebras_team, openrouter_team
-from app.logger import get_logger
+from app.logger import get_logger, suppress_verbose_logging
 from app.exceptions import MigruError
 from app.utils import performance_monitor, timing_decorator, memory_usage_decorator
+
+# Suppress verbose logging from third-party libraries
+suppress_verbose_logging()
 
 logger = get_logger("migru.main")
 console = Console()

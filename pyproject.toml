@@ -82,3 +82,8 @@ module = [
     "cerebras_cloud_sdk.*",
 ]
 ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "psutil>=7.2.1",
+]

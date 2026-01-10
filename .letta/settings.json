@@ -11,7 +11,10 @@
       "Bash(cd /home/ash_blanc/src/migru && uv pip install rich)",
       "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"import rich; print('rich version:', rich.__version__)\")",
       "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.main import display_banner\ndisplay_banner(show_welcome=True)\n\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.logger import suppress_verbose_logging, get_logger\nsuppress_verbose_logging()\nlogger = get_logger('test')\nlogger.info('This should not appear')\nlogger.error('This error should appear')\nprint('✓ Logging suppression working correctly')\n\")",
+      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.logger import suppress_verbose_logging\nsuppress_verbose_logging()\nfrom app.tools import SmartSearchTools\ntools = SmartSearchTools()\nprint('✓ SmartSearchTools initialized successfully')\nprint(f'✓ Available tools: {[func.name for func in tools.functions]}')\n\")"
     ]
   }
 }

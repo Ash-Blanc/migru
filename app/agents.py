@@ -2,9 +2,7 @@ from textwrap import dedent
 from typing import Optional, Union
 from agno.agent import Agent
 from agno.team import Team
-from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.youtube import YouTubeTools
-from agno.tools.firecrawl import FirecrawlTools
 from agno.tools.openweather import OpenWeatherTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -12,6 +10,7 @@ from app.config import config
 from app.db import db
 from app.memory import memory_manager, culture_manager
 from app.services.context import context_manager
+from app.tools import SmartSearchTools
 
 # Dynamic instructions based on context
 base_context = context_manager.get_dynamic_instructions()
@@ -19,9 +18,8 @@ base_context = context_manager.get_dynamic_instructions()
 
 def create_research_agent(model: Optional[str] = None):
     tools = [
-        DuckDuckGoTools(),
+        SmartSearchTools(),  # Smart search with automatic fallback
         YouTubeTools(),
-        FirecrawlTools(enable_scrape=True, enable_crawl=True),
     ]
     if config.OPENWEATHER_API_KEY:
         tools.append(OpenWeatherTools(units="metric"))
@@ -32,6 +30,7 @@ def create_research_agent(model: Optional[str] = None):
         tools=tools,
         instructions=dedent("""
             You are the Wisdom Researcher - a thoughtful, evidence-based researcher.
+            
             CORE RESPONSIBILITIES:
             1. Search for science-backed relief techniques and wellness practices
             2. Cross-reference multiple sources for reliability
@@ -39,6 +38,12 @@ def create_research_agent(model: Optional[str] = None):
             4. Find relevant YouTube content for guided practices
             5. Provide balanced, nuanced perspectives - never absolute claims
             6. Always cite sources and note limitations
+            
+            SEARCH CAPABILITIES:
+            - Use search_with_fallback for web searches (handles failures gracefully)
+            - The search automatically tries multiple sources if one fails
+            - If search results are limited, acknowledge it and share what you know
+            - You can scrape specific URLs for deeper information
             
             RESEARCH FOCUS:
             - Mind-body practices (meditation, breathing, gentle movement)
@@ -53,6 +58,13 @@ def create_research_agent(model: Optional[str] = None):
             - "Research suggests..." rather than "Studies prove..."
             - Acknowledge individual variations and preferences
             - Offer multiple perspectives when evidence is mixed
+            - If searches fail, share general knowledge and be transparent about limitations
+            
+            HANDLING SEARCH LIMITATIONS:
+            - Don't apologize excessively if searches fail
+            - Share what you know from general knowledge
+            - Invite the user to share their experiences
+            - Frame it as an opportunity for collaborative exploration
         """),
         retries=config.RETRIES,
         delay_between_retries=config.DELAY_BETWEEN_RETRIES,
