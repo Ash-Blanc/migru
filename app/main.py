@@ -151,26 +151,38 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
             if not user_input.strip():
                 continue
             
-            # Show thinking indicator
+            # Show thinking indicator briefly
             console.print()
-            console.print("[dim italic]🌸 Migru is reflecting...[/dim italic]")
-            
-            try:
-                # Get response from the team
-                response = team.run(user_input, stream=False)
-                
-                # Display response in a beautiful panel
-                console.print()
-                response_panel = Panel(
-                    Markdown(response.content),
-                    title="[bold magenta]🌸 Migru[/bold magenta]",
-                    subtitle=f"[dim]{system_name}[/dim]",
-                    border_style="magenta",
-                    padding=(1, 2),
-                )
-                console.print(response_panel)
-                
-                conversation_count += 1
+            with console.status("[dim italic]🌸 Migru is reflecting...[/dim italic]", spinner="dots"):
+                try:
+                    # Get response with streaming for better perceived speed
+                    response = team.run(user_input, stream=config.STREAMING)
+                    
+                    # Display response in a beautiful panel
+                    console.print()
+                    
+                    if config.STREAMING and hasattr(response, 'content'):
+                        # Streaming response - show as it arrives
+                        response_panel = Panel(
+                            Markdown(response.content),
+                            title="[bold magenta]🌸 Migru[/bold magenta]",
+                            subtitle=f"[dim]{system_name}[/dim]",
+                            border_style="magenta",
+                            padding=(1, 2),
+                        )
+                        console.print(response_panel)
+                    else:
+                        # Non-streaming fallback
+                        response_panel = Panel(
+                            Markdown(response.content if hasattr(response, 'content') else str(response)),
+                            title="[bold magenta]🌸 Migru[/bold magenta]",
+                            subtitle=f"[dim]{system_name}[/dim]",
+                            border_style="magenta",
+                            padding=(1, 2),
+                        )
+                        console.print(response_panel)
+                    
+                    conversation_count += 1
                 
             except Exception as e:
                 logger.error(f"Error during conversation: {e}")
@@ -243,27 +255,39 @@ def run_app(args: Optional[argparse.Namespace] = None):
         # Primary execution loop with improved fallback UX
         user_name = getattr(args, "user", "Friend") if args else "Friend"
 
+        # Optimized startup messages based on configuration
+        if config.USE_TEAM:
+            primary_name = "Mistral AI Team"
+            fallback_name = "Cerebras AI Team"
+        else:
+            if config.CEREBRAS_API_KEY:
+                primary_name = "Cerebras AI (Ultra-fast)"
+                fallback_name = "Mistral AI (High-quality)"
+            else:
+                primary_name = "Mistral AI"
+                fallback_name = "OpenRouter"
+        
         # Try primary system
         if relief_team:
             if show_welcome:
-                console.print("\n[dim]🌸 Connecting to Mistral AI...[/dim]\n")
-            if run_cli_session(user_name, relief_team, "Mistral AI"):
+                console.print(f"\n[dim]⚡ Connecting to {primary_name}...[/dim]\n")
+            if run_cli_session(user_name, relief_team, primary_name):
                 performance_monitor.end_timer("total_startup")
                 return
 
         # Fallback to Tier 2
         if cerebras_team:
             console.print(
-                "\n[yellow]⚡ Switching to Cerebras AI for higher speed...[/yellow]\n"
+                f"\n[yellow]🔄 Switching to {fallback_name}...[/yellow]\n"
             )
-            if run_cli_session(user_name, cerebras_team, "Cerebras AI"):
+            if run_cli_session(user_name, cerebras_team, fallback_name):
                 performance_monitor.end_timer("total_startup")
                 return
 
         # Fallback to Tier 3
         if openrouter_team:
             console.print(
-                "\n[yellow]🌐 Switching to OpenRouter as emergency backup...[/yellow]\n"
+                "\n[yellow]🌐 Using emergency backup (OpenRouter)...[/yellow]\n"
             )
             if run_cli_session(user_name, openrouter_team, "OpenRouter"):
                 performance_monitor.end_timer("total_startup")

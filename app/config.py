@@ -13,17 +13,28 @@ class Config:
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
     
-    # Models (using 'provider:model_id' format for Agno automatic resolution)
-    MODEL_SMALL = "mistral:mistral-small-latest"
-    MODEL_MEDIUM = "mistral:mistral-medium-latest"
-    MODEL_LARGE = "mistral:mistral-large-latest"
-    MODEL_FALLBACK = "cerebras:llama3.1-8b"
-    MODEL_OPENROUTER_FALLBACK = "openrouter:google/gemini-2.0-flash-001"
+    # Models (optimized for speed and intelligence)
+    # Strategy: Use fastest models, fallback to Mistral for quality
+    MODEL_PRIMARY = "cerebras:llama3.1-8b"  # Blazing fast (1000+ tok/s)
+    MODEL_SMART = "mistral:mistral-small-latest"  # Fast + intelligent fallback
+    MODEL_RESEARCH = "mistral:mistral-small-latest"  # Fast research
+    MODEL_FALLBACK_TIER2 = "openrouter:google/gemini-2.0-flash-exp"  # Fast fallback
     
-    # Resilience Settings
-    RETRIES = 3
-    DELAY_BETWEEN_RETRIES = 2
+    # Legacy model names (for compatibility)
+    MODEL_SMALL = "cerebras:llama3.1-8b"
+    MODEL_MEDIUM = "mistral:mistral-small-latest"
+    MODEL_LARGE = "mistral:mistral-small-latest"
+    MODEL_FALLBACK = "mistral:mistral-small-latest"
+    MODEL_OPENROUTER_FALLBACK = "openrouter:google/gemini-2.0-flash-exp"
+    
+    # Resilience Settings (optimized for speed)
+    RETRIES = 2  # Reduced for faster failures
+    DELAY_BETWEEN_RETRIES = 1  # Faster retry
     EXPONENTIAL_BACKOFF = True
+    
+    # Performance Settings
+    STREAMING = True  # Always stream for perceived speed
+    USE_TEAM = False  # Direct agent is faster than team coordination
 
     def validate(self):
         if not self.MISTRAL_API_KEY:

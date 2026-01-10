@@ -14,7 +14,9 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.logger import suppress_verbose_logging, get_logger\nsuppress_verbose_logging()\nlogger = get_logger('test')\nlogger.info('This should not appear')\nlogger.error('This error should appear')\nprint('✓ Logging suppression working correctly')\n\")",
-      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.logger import suppress_verbose_logging\nsuppress_verbose_logging()\nfrom app.tools import SmartSearchTools\ntools = SmartSearchTools()\nprint('✓ SmartSearchTools initialized successfully')\nprint(f'✓ Available tools: {[func.name for func in tools.functions]}')\n\")"
+      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.logger import suppress_verbose_logging\nsuppress_verbose_logging()\nfrom app.tools import SmartSearchTools\ntools = SmartSearchTools()\nprint('✓ SmartSearchTools initialized successfully')\nprint(f'✓ Available tools: {[func.name for func in tools.functions]}')\n\")",
+      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.config import config\nprint('✓ Configuration loaded')\nprint(f'  Primary model: {config.MODEL_PRIMARY}')\nprint(f'  Smart fallback: {config.MODEL_SMART}')\nprint(f'  Use team: {config.USE_TEAM}')\nprint(f'  Streaming: {config.STREAMING}')\nprint(f'  Retries: {config.RETRIES}')\nprint(f'  Retry delay: {config.DELAY_BETWEEN_RETRIES}s')\n\")",
+      "Bash(cd /home/ash_blanc/src/migru && uv run python -c \"\nfrom app.logger import suppress_verbose_logging\nsuppress_verbose_logging()\nfrom app.agents import relief_team, cerebras_team, research_agent\nprint('✓ Agents loaded successfully')\nprint(f'  Relief team type: {type(relief_team).__name__}')\nprint(f'  Relief team model: {relief_team.model}')\nif cerebras_team:\n    print(f'  Cerebras team model: {cerebras_team.model}')\nprint(f'  Research agent available: {research_agent is not None}')\n\")"
     ]
   }
 }

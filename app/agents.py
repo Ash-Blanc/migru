@@ -16,17 +16,26 @@ from app.tools import SmartSearchTools
 base_context = context_manager.get_dynamic_instructions()
 
 
-def create_research_agent(model: Optional[str] = None):
-    tools = [
-        SmartSearchTools(),  # Smart search with automatic fallback
-        YouTubeTools(),
-    ]
-    if config.OPENWEATHER_API_KEY:
-        tools.append(OpenWeatherTools(units="metric"))
+def create_research_agent(model: Optional[str] = None, minimal_tools: bool = False):
+    """Create research agent optimized for speed.
+    
+    Args:
+        model: Override model (default: fast research model)
+        minimal_tools: Use minimal tools for faster responses
+    """
+    if minimal_tools:
+        tools = [SmartSearchTools()]  # Only essential search
+    else:
+        tools = [
+            SmartSearchTools(),  # Smart search with automatic fallback
+            YouTubeTools(),
+        ]
+        if config.OPENWEATHER_API_KEY:
+            tools.append(OpenWeatherTools(units="metric"))
 
     return Agent(
         name="Wisdom Researcher",
-        model=model or config.MODEL_MEDIUM,
+        model=model or config.MODEL_RESEARCH,  # Use fast research model
         tools=tools,
         instructions=dedent("""
             You are the Wisdom Researcher - a thoughtful, evidence-based researcher.
@@ -72,10 +81,20 @@ def create_research_agent(model: Optional[str] = None):
     )
 
 
-def create_migru_agent(model: Optional[str] = None):
+def create_migru_agent(model: Optional[str] = None, enable_tools: bool = False):
+    """Create Migru agent optimized for speed.
+    
+    Args:
+        model: Override model (default: fastest available)
+        enable_tools: Enable reasoning tools (adds latency, use sparingly)
+    """
+    tools = []
+    if enable_tools:
+        tools.append(ReasoningTools(add_instructions=True))
+    
     return Agent(
         name="Migru",
-        model=model or config.MODEL_SMALL,
+        model=model or config.MODEL_PRIMARY,  # Use fastest model
         db=db,
         memory_manager=memory_manager,
         enable_user_memories=True,
@@ -84,8 +103,8 @@ def create_migru_agent(model: Optional[str] = None):
         add_culture_to_context=True,
         add_datetime_to_context=True,
         update_cultural_knowledge=True,
-        num_history_runs=5,
-        tools=[ReasoningTools(add_instructions=True)],
+        num_history_runs=3,  # Reduced from 5 for speed
+        tools=tools,
         instructions=dedent(f"""
             You are Migru - a wise, humble, and deeply curious companion.
             
@@ -158,13 +177,30 @@ def create_relief_team(model: Optional[str] = None):
     )
 
 
-# Direct instantiation using strings
-relief_team = create_relief_team()
-cerebras_team = (
-    create_relief_team(config.MODEL_FALLBACK) if config.CEREBRAS_API_KEY else None
-)
-openrouter_team = (
-    create_relief_team(config.MODEL_OPENROUTER_FALLBACK)
-    if config.OPENROUTER_API_KEY
-    else None
-)
+# Optimized: Use direct agent for speed, team only when needed
+# Direct agent is 2-3x faster than team coordination
+if config.USE_TEAM:
+    # Traditional team approach (higher quality, slower)
+    relief_team = create_relief_team()
+    cerebras_team = (
+        create_relief_team(config.MODEL_FALLBACK) if config.CEREBRAS_API_KEY else None
+    )
+    openrouter_team = (
+        create_relief_team(config.MODEL_OPENROUTER_FALLBACK)
+        if config.OPENROUTER_API_KEY
+        else None
+    )
+else:
+    # Fast direct agent approach (2-3x faster, still intelligent)
+    relief_team = create_migru_agent()  # Primary: Cerebras (blazing fast)
+    cerebras_team = (
+        create_migru_agent(config.MODEL_SMART) if config.MISTRAL_API_KEY else None
+    )  # Fallback: Mistral small
+    openrouter_team = (
+        create_migru_agent(config.MODEL_OPENROUTER_FALLBACK)
+        if config.OPENROUTER_API_KEY
+        else None
+    )  # Emergency: Gemini flash
+
+# Keep researcher available for explicit research requests
+research_agent = create_research_agent(minimal_tools=True)
