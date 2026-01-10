@@ -26,5 +26,14 @@ fi
 echo "Installing dependencies..."
 uv sync
 
+# Create .env from .env.example if it doesn't exist
+if [ ! -f .env ]; then
+    echo "Creating .env file from .env.example..."
+    cp .env.example .env
+    echo "⚠️  IMPORTANT: Please open '.env' and add your API keys before running the app!"
+else
+    echo ".env file already exists."
+fi
+
 echo "Setup complete! You can now run the application with:"
 echo "uv run main.py"
