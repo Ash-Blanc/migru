@@ -16,4 +16,5 @@ dependencies = [
     "youtube-search-python>=1.6.6",
     "youtube-transcript-api>=1.2.3",
     "requests>=2.31.0",
+    "cerebras-cloud-sdk>=1.0.0",
 ]
