@@ -220,8 +220,28 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
                     # Display response in a beautiful panel
                     console.print()
 
-                    if config.STREAMING and hasattr(response, 'content'):
+                    from types import GeneratorType
+                    if isinstance(response, GeneratorType):
                         # Streaming response - show as it arrives
+                        content = ""
+                        # Create a placeholder panel that we'll update
+                        with console.status("[dim]Generating response...[/dim]"):
+                            for chunk in response:
+                                if hasattr(chunk, "content") and chunk.content:
+                                    content += chunk.content
+                                elif isinstance(chunk, str):
+                                    content += chunk
+
+                        response_panel = Panel(
+                            Markdown(content),
+                            title="[bold magenta]🌸 Migru[/bold magenta]",
+                            subtitle=f"[dim]{system_name}[/dim]",
+                            border_style="magenta",
+                            padding=(1, 2),
+                        )
+                        console.print(response_panel)
+                    elif hasattr(response, 'content'):
+                        # Non-streaming response object
                         response_panel = Panel(
                             Markdown(response.content),
                             title="[bold magenta]🌸 Migru[/bold magenta]",
@@ -231,9 +251,9 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
                         )
                         console.print(response_panel)
                     else:
-                        # Non-streaming fallback
+                        # Fallback for string or other types
                         response_panel = Panel(
-                            Markdown(response.content if hasattr(response, 'content') else str(response)),
+                            Markdown(str(response)),
                             title="[bold magenta]🌸 Migru[/bold magenta]",
                             subtitle=f"[dim]{system_name}[/dim]",
                             border_style="magenta",
