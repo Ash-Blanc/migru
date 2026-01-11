@@ -1,3 +1,59 @@
+[project]
+name = "migru"
+version = "1.0.0"
+description = "A warm, AI-powered companion for migraine and stress support with real-time pattern detection"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Ash-Blanc", email = "angelash18092007@gmail.com"}
+]
+keywords = ["wellness", "migraine", "stress", "ai", "companion", "real-time-analytics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+# Production dependencies only
+dependencies = [
+    "agno>=2.3.24",              # AI agent framework
+    "redis>=5.0.0",              # Local data storage
+    "python-dotenv>=1.0.0",      # Environment configuration
+    "rich>=13.0.0",              # Beautiful CLI
+    "pathway>=0.28.0",           # Real-time streaming analytics
+]
+
+[project.optional-dependencies]
+# Development dependencies (not needed for end users)
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
+    "pytest-xdist>=3.3.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "psutil>=5.9.0",
+]
+
+[project.scripts]
+migru = "app.main:main"
+
+[project.urls]
+Homepage = "https://github.com/Ash-Blanc/migru"
+Repository = "https://github.com/Ash-Blanc/migru"
+Documentation = "https://github.com/Ash-Blanc/migru#readme"
+"Bug Tracker" = "https://github.com/Ash-Blanc/migru/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Pytest configuration
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q --strict-markers --strict-config"
@@ -13,6 +69,7 @@ markers = [
     "cli: marks tests as CLI tests",
 ]
 
+# Coverage configuration
 [tool.coverage.run]
 source = ["app"]
 omit = [
@@ -37,6 +94,7 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 
+# Ruff linting configuration
 [tool.ruff]
 target-version = "py312"
 line-length = 88
@@ -58,6 +116,7 @@ ignore = [
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 
+# MyPy type checking configuration
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
@@ -80,10 +139,9 @@ module = [
     "ddgs.*",
     "firecrawl.*",
     "cerebras_cloud_sdk.*",
+    "pathway.*",
 ]
 ignore_missing_imports = true
 
-[dependency-groups]
-dev = [
-    "psutil>=7.2.1",
-]
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
