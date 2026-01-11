@@ -25,6 +25,12 @@ dependencies = [
     "python-dotenv>=1.0.0",      # Environment configuration
     "rich>=13.0.0",              # Beautiful CLI
     "pathway>=0.28.0",           # Real-time streaming analytics
+    "youtube-transcript-api>=1.2.3",
+    "cerebras-cloud-sdk>=1.64.1",
+    "ddgs>=9.10.0",
+    "firecrawl-py>=4.12.0",
+    "mistralai>=1.10.0",
+    "openai>=2.15.0",
 ]
 
 [project.optional-dependencies]
