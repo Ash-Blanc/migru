@@ -260,9 +260,9 @@ class InsightGenerator:
             insights.append(
                 {
                     "type": "temporal_pattern",
-                    "message": f"I've been noticing a gentle pattern... Your discomfort tends to visit in the {time_descriptor}. "
-                    f"I wonder if we could explore what's happening during those hours? "
-                    f"Sometimes understanding the rhythm helps us dance with it better. 🌸",
+                    "message": f"I was just thinking about the {time_descriptor}... I wonder if we could explore some gentle "
+                    f"comfort strategies for that time of day? Sometimes a small shift in our rhythm "
+                    f"brings a bit more ease. 🌸",
                     "confidence": min(temporal["peak_count"] / 10, 0.9),
                     "timestamp": datetime.now().isoformat(),
                     "metadata": temporal,
@@ -276,17 +276,52 @@ class InsightGenerator:
                 insights.append(
                     {
                         "type": "weather_correlation",
-                        "message": "I'm noticing something curious about you and the weather... "
-                        "When the air pressure drops, your body seems to whisper that it notices. "
-                        "This awareness could help us prepare together. Would you like to explore "
-                        "gentle ways to support yourself when pressure changes? 🌤️",
+                        "message": "It might be helpful to keep an eye on the weather together... "
+                        "I've found that when the air pressure changes, our bodies sometimes notice. "
+                        "Would you like to explore some gentle ways to support yourself when the sky "
+                        "is in transition? 🌤️",
                         "confidence": correlation,
                         "timestamp": datetime.now().isoformat(),
                         "metadata": environmental,
                     }
                 )
 
+        # Behavioral Nudges (Contextual & Proactive)
+        nudges = self.generate_nudges(user_id, temporal)
+        insights.extend(nudges)
+
         return insights
+
+    def generate_nudges(self, user_id: str, temporal_patterns: dict[str, Any]) -> list[dict[str, Any]]:
+        """
+        Generate contextual behavioral nudges based on time and patterns.
+        """
+        nudges = []
+        current_hour = datetime.now().hour
+
+        # 1. Late Night Nudge (if active late)
+        if current_hour >= 23 or current_hour < 5:
+            nudges.append({
+                "type": "behavioral_nudge",
+                "message": "The world is quiet now... gentle reminder that rest is also a form of healing. 🌙",
+                "confidence": 0.8,
+                "timestamp": datetime.now().isoformat(),
+            })
+
+        # 2. Preemptive Care (if approaching peak symptom time)
+        peak_hour = temporal_patterns.get("peak_hour")
+        if peak_hour is not None:
+            # If we are 1-2 hours before typical peak
+            if 0 <= (peak_hour - current_hour) <= 2:
+                nudges.append({
+                    "type": "preemptive_care",
+                    "message": f"We're approaching a time of day ({peak_hour}:00) that has sometimes been challenging. "
+                               "Perhaps a moment of stillness or hydration now could support you ahead of time? 💧",
+                    "confidence": 0.85,
+                    "timestamp": datetime.now().isoformat(),
+                })
+
+        return nudges
 
     def _describe_time(self, hour: int) -> str:
         """Convert hour to natural language."""

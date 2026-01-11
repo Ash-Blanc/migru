@@ -57,7 +57,7 @@ class RealtimeWellnessStream:
         events = pw.io.python.read(
             input_connector,
             schema=self.schema,
-            autocommit_duration_ms=100,  # Process every 100ms for low latency
+            autocommit_duration_ms=50,  # Optimized for ultra-low latency
         )
 
         # Parse timestamps and metadata
@@ -81,11 +81,12 @@ class RealtimeWellnessStream:
         )
 
         # Aggregate symptom patterns by time windows
+        # Optimization: Use a 4-hour window with 1-hour hop for faster pattern detection
         hourly_patterns = events.windowby(
             pw.this.parsed_time,
             window=pw.temporal.sliding(
-                hop=timedelta(hours=1),
-                duration=timedelta(hours=6),
+                hop=timedelta(minutes=30),  # More frequent updates
+                duration=timedelta(hours=4), # Shorter window for faster convergence
             ),
             behavior=pw.temporal.exactly_once_behavior(),
         ).reduce(

@@ -31,6 +31,7 @@ dependencies = [
     "firecrawl-py>=4.12.0",
     "mistralai>=1.10.0",
     "openai>=2.15.0",
+    "prompt_toolkit>=3.0.0",
 ]
 
 [project.optional-dependencies]

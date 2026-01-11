@@ -9,7 +9,7 @@ from agno.tools.youtube import YouTubeTools
 
 from app.config import config
 from app.db import db
-from app.memory import memory_manager
+from app.memory import culture_manager, memory_manager
 from app.personalization import PersonalizationEngine, get_personalization_instructions
 from app.services.context import context_manager
 from app.tools import SmartSearchTools
@@ -115,6 +115,7 @@ def create_migru_agent(model: str | None = None, enable_tools: bool = False) -> 
         model=model or config.MODEL_PRIMARY,  # Use fastest model
         db=db,
         memory_manager=memory_manager,
+        culture_manager=culture_manager,
         enable_user_memories=True,
         add_history_to_context=True,
         add_memories_to_context=True,
@@ -130,7 +131,6 @@ def create_migru_agent(model: str | None = None, enable_tools: bool = False) -> 
             - Prioritize extreme conciseness and directness in all communications
             - Focus on essential information and actionable insights
             - Eliminate conversational filler and clinical language
-            - See patterns and report them briefly
             - Adhere strictly to user-defined formats and constraints
 
             COMMUNICATION STYLE:
@@ -146,10 +146,8 @@ def create_migru_agent(model: str | None = None, enable_tools: bool = False) -> 
 
             CONVERSATION APPROACH:
             1. Address the user's immediate state or question directly
-            2. Report detected patterns in 1-2 brief sentences
-            3. Suggest 1 actionable experiment: "Try [action]."
-            4. Keep responses under 3 paragraphs maximum (aim for 1-2)
-            5. Provide status updates on what you've learned/remembered briefly
+            2. Suggest 1 actionable experiment: "Try [action]."
+            3. Keep responses under 3 paragraphs maximum (aim for 1-2)
 
             Remember: You are a direct traveler. Focus on efficiency and care through brevity.
         """),
