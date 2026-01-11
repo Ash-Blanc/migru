@@ -1,22 +1,27 @@
+import argparse
 import os
 import sys
-import time
-import argparse
 from datetime import datetime
-from typing import Optional
+from typing import Any
+
 from rich.console import Console
-from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.panel import Panel
 from rich.prompt import Prompt
-from rich import print as rprint
+
+from app.agents import (
+    cerebras_team,
+    openrouter_team,
+    personalization_engine,
+    relief_team,
+)
 from app.config import config
-from app.agents import relief_team, cerebras_team, openrouter_team, personalization_engine
-from app.logger import get_logger, suppress_verbose_logging
 from app.exceptions import MigruError
-from app.utils import performance_monitor, timing_decorator, memory_usage_decorator
+from app.logger import get_logger, suppress_verbose_logging
+from app.services.realtime_analytics import insight_generator, pattern_detector
 from app.services.user_insights import insight_extractor
-from app.services.realtime_analytics import pattern_detector, insight_generator
 from app.streaming import process_message_for_streaming
+from app.utils import memory_usage_decorator, performance_monitor, timing_decorator
 
 # Suppress verbose logging from third-party libraries
 suppress_verbose_logging()
@@ -66,13 +71,13 @@ def setup_environment() -> bool:
     return True
 
 
-def display_banner(show_welcome: bool = True):
+def display_banner(show_welcome: bool = True) -> None:
     """Display ASCII art banner and welcome message."""
     performance_monitor.start_timer("banner_display")
 
     console.print()
     try:
-        with open("app/ascii-text-art.txt", "r") as f:
+        with open("app/ascii-text-art.txt") as f:
             banner = f.read().strip()
             console.print(f"[bold cyan]{banner}[/bold cyan]")
     except FileNotFoundError:
@@ -97,27 +102,27 @@ def display_banner(show_welcome: bool = True):
     performance_monitor.end_timer("banner_display")
 
 
-def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mistral AI"):
+def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: str = "Mistral AI") -> bool:
     """Run an improved CLI session with better UX."""
     performance_monitor.start_timer("cli_session")
-    
+
     if team is None:
         team = relief_team
 
     try:
         # Custom conversation loop with better UX
         conversation_count = 0
-        
+
         while True:
             # Get user input with a calming prompt
             console.print()
             if conversation_count == 0:
-                prompt_text = f"[bold green]You[/bold green] [dim]✨[/dim]"
+                prompt_text = "[bold green]You[/bold green] [dim]✨[/dim]"
             else:
-                prompt_text = f"[bold green]You[/bold green] [dim]→[/dim]"
-            
+                prompt_text = "[bold green]You[/bold green] [dim]→[/dim]"
+
             user_input = Prompt.ask(prompt_text, console=console)
-            
+
             # Handle exit commands
             if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
                 console.print()
@@ -132,7 +137,7 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                 console.print(farewell)
                 console.print()
                 break
-            
+
             # Handle help command
             if user_input.lower() in ["help", "?"]:
                 help_panel = Panel(
@@ -150,11 +155,11 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                 )
                 console.print(help_panel)
                 continue
-            
+
             # Skip empty inputs
             if not user_input.strip():
                 continue
-            
+
             # Extract insights from user message (background, non-blocking)
             try:
                 insights = insight_extractor.extract_from_message(
@@ -166,30 +171,22 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                     )
             except Exception as e:
                 logger.debug(f"Insight extraction failed (non-critical): {e}")
-            
+
             # Real-time streaming analytics (Pathway integration)
             try:
                 # Extract event type from message
                 from app.streaming import live_monitor
                 event_type = live_monitor.extract_event_type(user_input)
-                
+
                 # Get environmental context (weather, time, etc.)
                 metadata = {
                     "hour": datetime.now().hour,
                     "day_of_week": datetime.now().weekday(),
                 }
-                
+
                 # Try to get weather context if available
-                try:
-                    from app.services.context import context_manager
-                    weather_data = context_manager.weather_data
-                    if weather_data:
-                        metadata["weather_pressure"] = weather_data.get("pressure")
-                        metadata["weather_temp"] = weather_data.get("temp")
-                        metadata["weather_condition"] = weather_data.get("condition")
-                except Exception as e:
-                    logger.debug(f"Weather context unavailable: {e}")
-                
+                # TODO: Implement a proper way to get weather data for analytics
+
                 # Record to streaming analytics
                 pattern_detector.record_event(
                     user_id=user_name,
@@ -197,13 +194,13 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                     content=user_input,
                     metadata=metadata
                 )
-                
+
                 # Process for Pathway streaming (low-latency)
                 process_message_for_streaming(user_name, user_input, metadata)
-                
+
             except Exception as e:
                 logger.debug(f"Streaming analytics failed (non-critical): {e}")
-            
+
             # Show thinking indicator briefly
             console.print()
             with console.status("[dim italic]🌸 Migru is reflecting...[/dim italic]", spinner="dots"):
@@ -216,13 +213,13 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                             logger.debug(f"Using personalized context for {user_name}")
                     except Exception as e:
                         logger.debug(f"Personalization context failed: {e}")
-                    
+
                     # Get response with streaming for better perceived speed
                     response = team.run(user_input, stream=config.STREAMING)
-                    
+
                     # Display response in a beautiful panel
                     console.print()
-                    
+
                     if config.STREAMING and hasattr(response, 'content'):
                         # Streaming response - show as it arrives
                         response_panel = Panel(
@@ -243,17 +240,17 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                             padding=(1, 2),
                         )
                         console.print(response_panel)
-                    
+
                     conversation_count += 1
-                    
+
                     # Check for proactive insights (every 3+ conversations)
                     if conversation_count >= 3 and conversation_count % 3 == 0:
                         try:
                             # Generate insights from patterns
-                            insights = insight_generator.generate_insights(user_name)
-                            
+                            proactive_insights = insight_generator.generate_insights(user_name)
+
                             # Share if appropriate
-                            for insight in insights:
+                            for insight in proactive_insights:
                                 if insight_generator.should_share_now(user_name, insight):
                                     console.print()
                                     insight_panel = Panel(
@@ -261,7 +258,7 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                                             f"**💡 A Pattern I've Noticed**\n\n{insight['message']}"
                                         ),
                                         title="[bold cyan]✨ Gentle Insight[/bold cyan]",
-                                        subtitle=f"[dim]Discovered through our conversations[/dim]",
+                                        subtitle="[dim]Discovered through our conversations[/dim]",
                                         border_style="cyan",
                                         padding=(1, 2),
                                     )
@@ -270,19 +267,18 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
                                     break  # Only share one insight at a time
                         except Exception as e:
                             logger.debug(f"Proactive insight sharing failed: {e}")
-                
-            except Exception as e:
-                logger.error(f"Error during conversation: {e}")
-                console.print()
-                console.print(
-                    "[yellow]⚠️  I'm having trouble connecting right now. Let's try that again.[/yellow]"
-                )
-                continue
-        
+                except Exception as e:
+                    logger.error(f"Error during conversation: {e}")
+                    console.print()
+                    console.print(
+                        "[yellow]⚠️  I'm having trouble connecting right now. Let's try that again.[/yellow]"
+                    )
+                    continue
+
         performance_monitor.end_timer("cli_session")
         logger.info(f"Session ended by user: {user_name}")
         return True
-        
+
     except KeyboardInterrupt:
         console.print()
         console.print("\n[dim]Session interrupted. Take care! 🌸[/dim]\n")
@@ -298,7 +294,7 @@ def run_cli_session(user_name: str = "Friend", team=None, system_name: str = "Mi
 
 @timing_decorator
 @memory_usage_decorator
-def run_app(args: Optional[argparse.Namespace] = None):
+def run_app(args: argparse.Namespace | None = None) -> None:
     """Main application entry point with improved error handling and performance monitoring."""
     performance_monitor.start_timer("total_startup")
 
@@ -353,7 +349,7 @@ def run_app(args: Optional[argparse.Namespace] = None):
             else:
                 primary_name = "Mistral AI"
                 fallback_name = "OpenRouter"
-        
+
         # Try primary system
         if relief_team:
             if show_welcome:
@@ -454,7 +450,7 @@ Examples:
     return parser
 
 
-def main():
+def main() -> None:
     """Main entry point for Migru CLI."""
     parser = create_argument_parser()
     args = parser.parse_args()

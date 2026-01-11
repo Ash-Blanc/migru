@@ -5,12 +5,12 @@ This service analyzes conversations to extract meaningful patterns
 and insights about the user's life, preferences, and wellness journey.
 """
 
-from typing import Dict, List, Optional, Any
 from datetime import datetime
-import re
-from app.logger import get_logger
-from app.personalization import UserProfile, PersonalizationEngine
+from typing import Any, cast
+
 from app.db import db
+from app.logger import get_logger
+from app.personalization import PersonalizationEngine
 
 logger = get_logger("migru.insights")
 
@@ -18,15 +18,15 @@ logger = get_logger("migru.insights")
 class InsightExtractor:
     """Extract structured insights from natural conversation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.personalization = PersonalizationEngine(db)
 
     def extract_from_message(
-        self, user_id: str, message: str, context: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, user_id: str, message: str, context: str | None = None
+    ) -> dict[str, Any]:
         """
         Extract insights from a user message.
-        
+
         Returns structured information that can be stored in user profile.
         """
         insights = {
@@ -48,7 +48,7 @@ class InsightExtractor:
 
         return insights
 
-    def _extract_age_hints(self, message: str) -> Optional[Dict[str, str]]:
+    def _extract_age_hints(self, message: str) -> dict[str, str] | None:
         """Extract age-related hints from message."""
         message_lower = message.lower()
 
@@ -72,7 +72,7 @@ class InsightExtractor:
 
         return None
 
-    def _extract_location_hints(self, message: str) -> Optional[Dict[str, str]]:
+    def _extract_location_hints(self, message: str) -> dict[str, str] | None:
         """Extract location/living situation hints."""
         message_lower = message.lower()
 
@@ -101,7 +101,7 @@ class InsightExtractor:
 
         return None
 
-    def _extract_schedule_hints(self, message: str) -> Optional[Dict[str, str]]:
+    def _extract_schedule_hints(self, message: str) -> dict[str, str] | None:
         """Extract daily schedule and rhythm hints."""
         message_lower = message.lower()
 
@@ -134,7 +134,7 @@ class InsightExtractor:
 
         return None
 
-    def _extract_interests(self, message: str) -> Optional[List[str]]:
+    def _extract_interests(self, message: str) -> list[str] | None:
         """Extract mentioned hobbies and interests."""
         interests = []
         message_lower = message.lower()
@@ -159,10 +159,10 @@ class InsightExtractor:
 
         return interests if interests else None
 
-    def _extract_relationships(self, message: str) -> Optional[Dict[str, Any]]:
+    def _extract_relationships(self, message: str) -> dict[str, Any] | None:
         """Extract relationship context."""
         message_lower = message.lower()
-        relationships = {}
+        relationships: dict[str, Any] = {}
 
         # Family mentions
         if any(word in message_lower for word in ["my family", "parents", "siblings"]):
@@ -191,10 +191,10 @@ class InsightExtractor:
 
         return relationships if relationships else None
 
-    def _extract_sensitivities(self, message: str) -> Optional[Dict[str, Any]]:
+    def _extract_sensitivities(self, message: str) -> dict[str, Any] | None:
         """Extract sensory sensitivities and triggers."""
         message_lower = message.lower()
-        sensitivities = {}
+        sensitivities: dict[str, Any] = {}
 
         # Weather sensitivity
         if any(word in message_lower for word in ["weather affects", "barometric", "pressure changes"]):
@@ -221,10 +221,10 @@ class InsightExtractor:
 
         return sensitivities if sensitivities else None
 
-    def _extract_wellness_patterns(self, message: str) -> Optional[Dict[str, Any]]:
+    def _extract_wellness_patterns(self, message: str) -> dict[str, Any] | None:
         """Extract wellness and relief patterns."""
         message_lower = message.lower()
-        patterns = {}
+        patterns: dict[str, Any] = {}
 
         # What helps
         relief_methods = []
@@ -247,9 +247,9 @@ class InsightExtractor:
 
         return patterns if patterns else None
 
-    def _extract_communication_style(self, message: str) -> Optional[Dict[str, str]]:
+    def _extract_communication_style(self, message: str) -> dict[str, str] | None:
         """Extract user's communication preferences."""
-        style = {}
+        style: dict[str, str] = {}
 
         # Message length
         word_count = len(message.split())
@@ -271,7 +271,7 @@ class InsightExtractor:
 
         return style if style else None
 
-    def update_user_profile_from_insights(self, user_id: str, insights: Dict[str, Any]) -> bool:
+    def update_user_profile_from_insights(self, user_id: str, insights: dict[str, Any]) -> bool:
         """Update user profile with extracted insights."""
         try:
             profile_manager = self.personalization.get_user_profile(user_id)
@@ -305,42 +305,45 @@ class InsightExtractor:
 
             # Update interests (append, don't replace)
             if "interests" in insights:
-                current_interests = profile["interests"]["hobbies"]
+                current_interests = list(profile["interests"]["hobbies"])
                 for interest in insights["interests"]:
                     if interest not in current_interests:
                         current_interests.append(interest)
+                profile["interests"]["hobbies"] = current_interests
 
             # Update relationships
             if "relationships" in insights:
                 rel_info = insights["relationships"]
                 if "has_family" in rel_info:
-                    profile["relationships"]["support_network"] = "family"
+                    cast(dict[str, Any], profile["relationships"])["support_network"] = "family"
                 if "pets" in rel_info:
-                    profile["relationships"]["pets"] = rel_info["pets"]
+                    cast(dict[str, Any], profile["relationships"])["pets"] = rel_info["pets"]
 
             # Update sensitivities
             if "sensitivities" in insights:
                 sens_info = insights["sensitivities"]
                 if "weather_sensitive" in sens_info:
-                    profile["sensitivities"]["weather_sensitivity"] = "high"
+                    cast(dict[str, Any], profile["sensitivities"])["weather_sensitivity"] = "high"
                 if "light_sensitive" in sens_info:
-                    profile["sensitivities"]["light_sensitivity"] = "high"
+                    cast(dict[str, Any], profile["sensitivities"])["light_sensitivity"] = "high"
                 if "noise_sensitive" in sens_info:
-                    profile["sensitivities"]["noise_sensitivity"] = "high"
+                    cast(dict[str, Any], profile["sensitivities"])["noise_sensitivity"] = "high"
                 if "stress_triggers" in sens_info:
-                    current_triggers = profile["sensitivities"]["stress_triggers"]
+                    current_triggers = list(cast(dict[str, Any], profile["sensitivities"])["stress_triggers"])
                     for trigger in sens_info["stress_triggers"]:
                         if trigger not in current_triggers:
                             current_triggers.append(trigger)
+                    cast(dict[str, Any], profile["sensitivities"])["stress_triggers"] = current_triggers
 
             # Update wellness patterns
             if "wellness_patterns" in insights:
                 wellness_info = insights["wellness_patterns"]
                 if "relief_methods" in wellness_info:
-                    current_methods = profile["wellness"]["relief_methods"]
+                    current_methods = list(cast(dict[str, Any], profile["wellness"])["relief_methods"])
                     for method in wellness_info["relief_methods"]:
                         if method not in current_methods:
                             current_methods.append(method)
+                    cast(dict[str, Any], profile["wellness"])["relief_methods"] = current_methods
 
             # Update communication style
             if "communication_style" in insights:

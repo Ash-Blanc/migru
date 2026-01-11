@@ -1,5 +1,7 @@
 from textwrap import dedent
+
 from app.services.knowledge import knowledge_service
+
 
 class ContextManager:
     def get_dynamic_instructions(self, user_id: str = "default_user") -> str:
@@ -27,7 +29,7 @@ class ContextManager:
                     - What Has Helped: {user_profile.get('relief_methods', 'learning together')}
                     - Energy Rhythms: {user_profile.get('energy_patterns', 'observing')}
                     - Environmental Sensitivities: {user_profile.get('environmental_factors', 'noticing')}
-                    
+
                     ADAPTATION:
                     - Adopt a {base_tone} presence.
                     - Honor what has worked before: {user_profile.get('relief_methods', 'co-discovering')}.
@@ -38,8 +40,8 @@ class ContextManager:
         return instructions
 
     def update_user_state(
-        self, user_id: str, mood: str = None, new_trigger: str = None
-    ):
+        self, user_id: str, mood: str | None = None, new_trigger: str | None = None
+    ) -> None:
         """Updates the user's state in the Knowledge Graph."""
         updates = {}
         if mood:

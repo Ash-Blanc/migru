@@ -1,6 +1,9 @@
 import os
+
 from dotenv import load_dotenv
+
 from app.exceptions import ConfigurationError
+
 # Import logger locally in validate to avoid circular imports if logger uses config later (though currently it doesn't)
 
 load_dotenv()
@@ -12,31 +15,31 @@ class Config:
     CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-    
+
     # Models (optimized for speed and intelligence)
     # Strategy: Use fastest models, fallback to Mistral for quality
     MODEL_PRIMARY = "cerebras:llama3.1-8b"  # Blazing fast (1000+ tok/s)
     MODEL_SMART = "mistral:mistral-small-latest"  # Fast + intelligent fallback
     MODEL_RESEARCH = "mistral:mistral-small-latest"  # Fast research
     MODEL_FALLBACK_TIER2 = "openrouter:google/gemini-2.0-flash-exp"  # Fast fallback
-    
+
     # Legacy model names (for compatibility)
     MODEL_SMALL = "cerebras:llama3.1-8b"
     MODEL_MEDIUM = "mistral:mistral-small-latest"
     MODEL_LARGE = "mistral:mistral-small-latest"
     MODEL_FALLBACK = "mistral:mistral-small-latest"
     MODEL_OPENROUTER_FALLBACK = "openrouter:google/gemini-2.0-flash-exp"
-    
+
     # Resilience Settings (optimized for speed)
     RETRIES = 2  # Reduced for faster failures
     DELAY_BETWEEN_RETRIES = 1  # Faster retry
     EXPONENTIAL_BACKOFF = True
-    
+
     # Performance Settings
     STREAMING = True  # Always stream for perceived speed
     USE_TEAM = False  # Direct agent is faster than team coordination
 
-    def validate(self):
+    def validate(self) -> None:
         if not self.MISTRAL_API_KEY:
             raise ConfigurationError("MISTRAL_API_KEY is not set in environment variables.")
         if not self.FIRECRAWL_API_KEY:

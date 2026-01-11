@@ -8,13 +8,14 @@ This service provides:
 - Low-latency updates
 """
 
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
 import json
-from app.logger import get_logger
-from app.db import db
+from datetime import datetime, timedelta
+from typing import Any, cast
+
 from redis import Redis
+
 from app.config import config
+from app.logger import get_logger
 
 logger = get_logger("migru.realtime")
 
@@ -22,7 +23,7 @@ logger = get_logger("migru.realtime")
 class PatternDetector:
     """Detect wellness patterns from streaming conversation data."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.redis_client = Redis.from_url(config.REDIS_URL)
         self.logger = logger
 
@@ -31,11 +32,11 @@ class PatternDetector:
         user_id: str,
         event_type: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ):
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """
         Record an event to the time-series stream.
-        
+
         Uses Redis Streams for low-latency event recording.
         """
         try:
@@ -48,7 +49,7 @@ class PatternDetector:
             }
 
             # Add to Redis stream
-            self.redis_client.xadd(stream_key, event_data, maxlen=1000)  # Keep last 1000 events
+            self.redis_client.xadd(stream_key, cast(dict[Any, Any], event_data), maxlen=1000)  # Keep last 1000 events
             self.logger.debug(f"Recorded {event_type} event for {user_id}")
 
             # Update recent patterns
@@ -58,25 +59,25 @@ class PatternDetector:
             self.logger.error(f"Error recording event: {e}")
 
     def _update_recent_patterns(
-        self, user_id: str, event_type: str, metadata: Optional[Dict[str, Any]]
-    ):
+        self, user_id: str, event_type: str, metadata: dict[str, Any] | None
+    ) -> None:
         """Update incremental pattern statistics."""
         try:
             pattern_key = f"patterns:{user_id}"
             current_hour = datetime.now().hour
 
             # Get or initialize patterns
-            patterns = self.redis_client.hgetall(pattern_key)
-            if not patterns:
-                patterns = {}
-
-            # Decode bytes to strings if needed
-            patterns = {
-                k.decode() if isinstance(k, bytes) else k: v.decode()
-                if isinstance(v, bytes)
-                else v
-                for k, v in patterns.items()
-            }
+            raw_patterns = self.redis_client.hgetall(pattern_key)
+            if not raw_patterns:
+                patterns: dict[str, str] = {}
+            else:
+                # Decode bytes to strings if needed
+                patterns = {
+                    k.decode() if isinstance(k, bytes) else str(k): v.decode()
+                    if isinstance(v, bytes)
+                    else str(v)
+                    for k, v in cast(dict[Any, Any], raw_patterns).items()
+                }
 
             # Update hourly symptom counts
             if event_type == "symptom":
@@ -97,7 +98,7 @@ class PatternDetector:
 
             # Store updated patterns
             if patterns:
-                self.redis_client.hset(pattern_key, mapping=patterns)
+                self.redis_client.hset(pattern_key, mapping=cast(dict[Any, Any], patterns))
 
             # Set expiry (30 days)
             self.redis_client.expire(pattern_key, 30 * 24 * 3600)
@@ -105,10 +106,10 @@ class PatternDetector:
         except Exception as e:
             self.logger.error(f"Error updating patterns: {e}")
 
-    def get_temporal_patterns(self, user_id: str) -> Dict[str, Any]:
+    def get_temporal_patterns(self, user_id: str) -> dict[str, Any]:
         """
         Get detected temporal patterns for user.
-        
+
         Returns patterns like:
         - Peak symptom hours
         - Day of week patterns
@@ -116,32 +117,29 @@ class PatternDetector:
         """
         try:
             pattern_key = f"patterns:{user_id}"
-            patterns = self.redis_client.hgetall(pattern_key)
+            raw_patterns = self.redis_client.hgetall(pattern_key)
 
-            if not patterns:
+            if not raw_patterns:
                 return {}
 
             # Decode and parse patterns
             decoded = {
-                k.decode() if isinstance(k, bytes) else k: int(v.decode())
+                k.decode() if isinstance(k, bytes) else str(k): int(v.decode())
                 if isinstance(v, bytes)
                 else int(v)
-                for k, v in patterns.items()
-                if k.startswith(b"symptoms_hour") or k == b"symptoms_hour"
+                for k, v in cast(dict[Any, Any], raw_patterns).items()
+                if (k.decode() if isinstance(k, bytes) else str(k)).startswith("symptoms_hour")
             }
 
             # Find peak hours
-            hourly_symptoms = {}
+            hourly_symptoms: dict[int, int] = {}
             for key, count in decoded.items():
-                if isinstance(key, str) and key.startswith("symptoms_hour_"):
+                if key.startswith("symptoms_hour_"):
                     hour = int(key.split("_")[-1])
-                    hourly_symptoms[hour] = count
-                elif isinstance(key, bytes) and key.startswith(b"symptoms_hour_"):
-                    hour = int(key.decode().split("_")[-1])
                     hourly_symptoms[hour] = count
 
             if hourly_symptoms:
-                peak_hour = max(hourly_symptoms, key=hourly_symptoms.get)
+                peak_hour = max(hourly_symptoms, key=lambda k: hourly_symptoms[k])
                 return {
                     "peak_hour": peak_hour,
                     "peak_count": hourly_symptoms[peak_hour],
@@ -154,23 +152,23 @@ class PatternDetector:
             self.logger.error(f"Error getting temporal patterns: {e}")
             return {}
 
-    def get_environmental_correlations(self, user_id: str) -> Dict[str, Any]:
+    def get_environmental_correlations(self, user_id: str) -> dict[str, Any]:
         """
         Get environmental correlations (weather, pressure, etc.).
-        
+
         Returns correlation insights.
         """
         try:
             pattern_key = f"patterns:{user_id}"
-            patterns = self.redis_client.hgetall(pattern_key)
+            raw_patterns = self.redis_client.hgetall(pattern_key)
 
-            if not patterns:
+            if not raw_patterns:
                 return {}
 
             # Decode patterns
             decoded = {}
-            for k, v in patterns.items():
-                key = k.decode() if isinstance(k, bytes) else k
+            for k, v in cast(dict[Any, Any], raw_patterns).items():
+                key = k.decode() if isinstance(k, bytes) else str(k)
                 value = int(v.decode()) if isinstance(v, bytes) else int(v)
                 decoded[key] = value
 
@@ -196,8 +194,8 @@ class PatternDetector:
             return {}
 
     def get_recent_events(
-        self, user_id: str, hours: int = 24, event_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, user_id: str, hours: int = 24, event_type: str | None = None
+    ) -> list[dict[str, Any]]:
         """Get recent events from stream."""
         try:
             stream_key = f"wellness_stream:{user_id}"
@@ -209,9 +207,9 @@ class PatternDetector:
 
             # Parse and filter events
             parsed_events = []
-            for event_id, event_data in events:
+            for event_id, event_data in cast(list[Any], events):
                 parsed = {
-                    "id": event_id.decode() if isinstance(event_id, bytes) else event_id,
+                    "id": event_id.decode() if isinstance(event_id, bytes) else str(event_id),
                     "event_type": event_data.get(b"event_type", b"").decode(),
                     "content": event_data.get(b"content", b"").decode(),
                     "timestamp": event_data.get(b"timestamp", b"").decode(),
@@ -233,15 +231,15 @@ class PatternDetector:
 class InsightGenerator:
     """Generate caring, proactive insights from detected patterns."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.detector = PatternDetector()
         self.redis_client = Redis.from_url(config.REDIS_URL)
         self.logger = logger
 
-    def generate_insights(self, user_id: str) -> List[Dict[str, Any]]:
+    def generate_insights(self, user_id: str) -> list[dict[str, Any]]:
         """
         Generate insights from user's patterns.
-        
+
         Returns list of insights with:
         - message: Caring, actionable message
         - confidence: Confidence score (0-1)
@@ -301,10 +299,10 @@ class InsightGenerator:
         else:
             return "late night or early morning"
 
-    def should_share_now(self, user_id: str, insight: Dict[str, Any]) -> bool:
+    def should_share_now(self, user_id: str, insight: dict[str, Any]) -> bool:
         """
         Determine if insight should be shared now.
-        
+
         Considers:
         - Minimum confidence threshold
         - Time since last insight shared
@@ -320,7 +318,8 @@ class InsightGenerator:
         last_shared = self.redis_client.get(last_insight_key)
 
         if last_shared:
-            last_time = datetime.fromisoformat(last_shared.decode())
+            last_time_str = last_shared.decode() if isinstance(last_shared, bytes) else str(last_shared)
+            last_time = datetime.fromisoformat(last_time_str)
             time_diff = datetime.now() - last_time
 
             # Don't share more than once per day
@@ -329,7 +328,7 @@ class InsightGenerator:
 
         return True
 
-    def mark_insight_shared(self, user_id: str):
+    def mark_insight_shared(self, user_id: str) -> None:
         """Mark that an insight was shared to prevent over-sharing."""
         last_insight_key = f"last_insight:{user_id}"
         self.redis_client.set(

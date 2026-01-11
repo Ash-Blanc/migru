@@ -1,15 +1,18 @@
-import time
 import functools
+import time
+from collections.abc import Callable
+from typing import Any
+
 from app.logger import get_logger
 
 logger = get_logger("migru.performance")
 
 
-def timing_decorator(func):
+def timing_decorator(func: Callable) -> Callable:
     """Decorator to measure function execution time."""
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.time()
         try:
             result = func(*args, **kwargs)
@@ -24,13 +27,13 @@ def timing_decorator(func):
     return wrapper
 
 
-def memory_usage_decorator(func):
+def memory_usage_decorator(func: Callable) -> Callable:
     """Decorator to measure memory usage before and after function execution."""
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
-            import psutil
+            import psutil  # type: ignore
 
             process = psutil.Process()
             memory_before = process.memory_info().rss / 1024 / 1024  # MB
@@ -53,16 +56,16 @@ def memory_usage_decorator(func):
 class PerformanceMonitor:
     """Simple performance monitoring for CLI operations."""
 
-    def __init__(self):
-        self.start_times = {}
-        self.metrics = {}
+    def __init__(self) -> None:
+        self.start_times: dict[str, float] = {}
+        self.metrics: dict[str, list[float]] = {}
 
-    def start_timer(self, operation: str):
+    def start_timer(self, operation: str) -> None:
         """Start timing an operation."""
         self.start_times[operation] = time.time()
         logger.debug(f"Started timing: {operation}")
 
-    def end_timer(self, operation: str):
+    def end_timer(self, operation: str) -> float | None:
         """End timing an operation and record the duration."""
         if operation in self.start_times:
             duration = time.time() - self.start_times[operation]

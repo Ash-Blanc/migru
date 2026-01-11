@@ -9,10 +9,12 @@ This module transforms Migru into a dynamic Real-Time Analyst that:
 - Maintains warm, caring persona
 """
 
-import pathway as pw
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
 import json
+from datetime import datetime, timedelta
+from typing import Any, cast
+
+import pathway as pw
+
 from app.logger import get_logger
 
 logger = get_logger("migru.streaming")
@@ -21,16 +23,16 @@ logger = get_logger("migru.streaming")
 class RealtimeWellnessStream:
     """
     Real-time wellness analytics using Pathway's streaming computation.
-    
+
     Processes user interactions as a continuous stream, detecting patterns
     and correlations incrementally without batch processing delays.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logger
         self.schema = self._define_schema()
 
-    def _define_schema(self):
+    def _define_schema(self) -> Any:
         """Define Pathway schema for wellness events."""
         class WellnessEventSchema(pw.Schema):
             user_id: str
@@ -38,16 +40,16 @@ class RealtimeWellnessStream:
             event_type: str  # 'message', 'symptom', 'relief', 'activity'
             content: str
             metadata: str  # JSON string with additional context
-        
+
         return WellnessEventSchema
 
-    def create_wellness_stream(self, input_connector) -> pw.Table:
+    def create_wellness_stream(self, input_connector: Any) -> pw.Table:
         """
         Create real-time wellness analytics stream.
-        
+
         Args:
             input_connector: Pathway connector for streaming input
-            
+
         Returns:
             Pathway table with streaming computations
         """
@@ -61,21 +63,21 @@ class RealtimeWellnessStream:
         # Parse timestamps and metadata
         events = events.with_columns(
             parsed_time=pw.this.timestamp.dt.strptime("%Y-%m-%dT%H:%M:%S"),
-            parsed_metadata=pw.this.metadata.json.parse(),
+            parsed_metadata=cast(Any, pw.this.metadata).json.parse(),
         )
 
-        return events
+        return events  # type: ignore
 
     def detect_temporal_patterns(self, events: pw.Table) -> pw.Table:
         """
         Detect time-based patterns (morning headaches, evening stress, etc.).
-        
+
         Uses sliding window aggregation for incremental computation.
         """
         # Extract hour from timestamp
         events = events.with_columns(
             hour=pw.this.parsed_time.dt.hour,
-            day_of_week=pw.this.parsed_time.dt.dayofweek,
+            day_of_week=pw.this.parsed_time.dt.dayofweek,  # type: ignore
         )
 
         # Aggregate symptom patterns by time windows
@@ -90,18 +92,18 @@ class RealtimeWellnessStream:
             user_id=pw.this.user_id,
             window_start=pw.this._pw_window_start,
             symptom_count=pw.reducers.count(
-                pw.if_(pw.this.event_type == "symptom", 1)
+                pw.if_(pw.this.event_type == "symptom", 1)  # type: ignore
             ),
-            relief_count=pw.reducers.count(pw.if_(pw.this.event_type == "relief", 1)),
+            relief_count=pw.reducers.count(pw.if_(pw.this.event_type == "relief", 1)),  # type: ignore
             avg_hour=pw.reducers.avg(pw.this.hour),
         )
 
-        return hourly_patterns
+        return hourly_patterns  # type: ignore
 
     def correlate_environment_wellness(self, events: pw.Table) -> pw.Table:
         """
         Correlate environmental factors (weather, activities) with wellness.
-        
+
         Incremental correlation detection for real-time insights.
         """
         # Extract environmental factors from metadata
@@ -125,14 +127,14 @@ class RealtimeWellnessStream:
             window_start=pw.this._pw_window_start,
             # Count symptoms by pressure ranges
             low_pressure_symptoms=pw.reducers.count(
-                pw.if_(
+                pw.if_(  # type: ignore
                     (pw.this.event_type == "symptom")
                     & (pw.this.weather_pressure < 1010),
                     1,
                 )
             ),
             high_pressure_symptoms=pw.reducers.count(
-                pw.if_(
+                pw.if_(  # type: ignore
                     (pw.this.event_type == "symptom")
                     & (pw.this.weather_pressure >= 1010),
                     1,
@@ -140,16 +142,16 @@ class RealtimeWellnessStream:
             ),
             # Activity correlations
             activities_during_symptoms=pw.reducers.tuple(
-                pw.if_(pw.this.event_type == "symptom", pw.this.activity)
+                pw.if_(pw.this.event_type == "symptom", pw.this.activity)  # type: ignore
             ),
         )
 
-        return correlations
+        return correlations  # type: ignore
 
     def detect_trigger_patterns(self, events: pw.Table) -> pw.Table:
         """
         Real-time trigger pattern detection.
-        
+
         Identifies what precedes symptoms using temporal joins.
         """
         # Separate symptoms and activities
@@ -163,9 +165,9 @@ class RealtimeWellnessStream:
             how=pw.JoinMode.LEFT,
         ).filter(
             # Activity occurred 0-2 hours before symptom
-            (pw.this.parsed_time - pw.right.parsed_time).dt.total_seconds()
+            (pw.this.parsed_time - pw.right.parsed_time).dt.total_seconds()  # type: ignore
             <= 7200,  # 2 hours
-            (pw.this.parsed_time - pw.right.parsed_time).dt.total_seconds() >= 0,
+            (pw.this.parsed_time - pw.right.parsed_time).dt.total_seconds() >= 0,  # type: ignore
         )
 
         # Aggregate potential triggers
@@ -177,14 +179,14 @@ class RealtimeWellnessStream:
             occurrence_count=pw.reducers.count(),
         )
 
-        return trigger_patterns
+        return trigger_patterns  # type: ignore
 
     def generate_proactive_insights(
         self, patterns: pw.Table, correlations: pw.Table
     ) -> pw.Table:
         """
         Generate proactive insights from detected patterns.
-        
+
         Transforms raw patterns into caring, actionable suggestions.
         """
         # Join patterns with correlations
@@ -200,12 +202,12 @@ class RealtimeWellnessStream:
             insight_type=pw.apply(self._classify_insight, pw.this),
             message=pw.apply(self._generate_caring_message, pw.this),
             confidence=pw.apply(self._calculate_confidence, pw.this),
-            timestamp=pw.now(),
+            timestamp=pw.now(),  # type: ignore
         )
 
-        return insights
+        return insights  # type: ignore
 
-    def _classify_insight(self, row) -> str:
+    def _classify_insight(self, row: Any) -> str:
         """Classify the type of insight."""
         # This will be replaced with actual logic in real implementation
         if row.symptom_count > 3:
@@ -214,7 +216,7 @@ class RealtimeWellnessStream:
             return "weather_correlation"
         return "general_observation"
 
-    def _generate_caring_message(self, row) -> str:
+    def _generate_caring_message(self, row: Any) -> str:
         """Generate warm, caring message from pattern data."""
         # This will be replaced with actual logic in real implementation
         insight_type = self._classify_insight(row)
@@ -227,7 +229,7 @@ class RealtimeWellnessStream:
 
         return messages.get(insight_type, messages["general_observation"])
 
-    def _calculate_confidence(self, row) -> float:
+    def _calculate_confidence(self, row: Any) -> float:
         """Calculate confidence score for the insight."""
         # Simple confidence based on data points
         if hasattr(row, "symptom_count") and row.symptom_count >= 5:
@@ -240,7 +242,7 @@ class RealtimeWellnessStream:
 class LiveWellnessMonitor:
     """
     Live monitoring service that processes conversation streams in real-time.
-    
+
     Integrates with Migru's conversation flow to provide:
     - Incremental pattern detection
     - Real-time correlation analysis
@@ -248,9 +250,9 @@ class LiveWellnessMonitor:
     - Low-latency updates
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.stream = RealtimeWellnessStream()
-        self.event_buffer = []
+        self.event_buffer: list[dict[str, Any]] = []
         self.logger = logger
 
     def add_conversation_event(
@@ -258,11 +260,11 @@ class LiveWellnessMonitor:
         user_id: str,
         event_type: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ):
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """
         Add conversation event to the real-time stream.
-        
+
         Args:
             user_id: User identifier
             event_type: Type of event ('message', 'symptom', 'relief', 'activity')
@@ -283,7 +285,7 @@ class LiveWellnessMonitor:
     def extract_event_type(self, message: str) -> str:
         """
         Classify message into event type for stream processing.
-        
+
         Uses keyword detection to identify:
         - Symptoms (headache, migraine, stress, pain)
         - Relief (better, helped, relieved)
@@ -336,14 +338,14 @@ class LiveWellnessMonitor:
 
         return "message"
 
-    def get_recent_insights(self, user_id: str, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_recent_insights(self, user_id: str, hours: int = 24) -> list[dict[str, Any]]:
         """
         Get recent insights for a user.
-        
+
         Args:
             user_id: User identifier
             hours: Look back period in hours
-            
+
         Returns:
             List of recent insights
         """
@@ -352,10 +354,10 @@ class LiveWellnessMonitor:
         self.logger.debug(f"Fetching insights for {user_id} from last {hours} hours")
         return []
 
-    def should_share_insight(self, insight: Dict[str, Any]) -> bool:
+    def should_share_insight(self, insight: dict[str, Any]) -> bool:
         """
         Determine if insight should be proactively shared.
-        
+
         Ensures insights are:
         - High confidence (>0.7)
         - Not shared too frequently (max 1 per day)
@@ -380,11 +382,11 @@ live_monitor = LiveWellnessMonitor()
 
 
 def process_message_for_streaming(
-    user_id: str, message: str, metadata: Optional[Dict[str, Any]] = None
-):
+    user_id: str, message: str, metadata: dict[str, Any] | None = None
+) -> None:
     """
     Process a conversation message for real-time streaming analytics.
-    
+
     Args:
         user_id: User identifier
         message: User message content
@@ -400,10 +402,10 @@ def process_message_for_streaming(
         logger.error(f"Error processing streaming event: {e}")
 
 
-def get_proactive_insights(user_id: str) -> Optional[str]:
+def get_proactive_insights(user_id: str) -> str | None:
     """
     Get proactive insights if available and appropriate.
-    
+
     Returns a caring message if patterns warrant sharing, None otherwise.
     """
     try:

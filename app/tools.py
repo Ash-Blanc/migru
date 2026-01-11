@@ -1,9 +1,11 @@
 """Custom tools with fallback mechanisms for robust search."""
 
-from typing import List, Dict, Any, Optional
+from typing import Any, cast
+
 from agno.tools import Toolkit
 from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.firecrawl import FirecrawlTools
+
 from app.logger import get_logger
 
 logger = get_logger("migru.tools")
@@ -12,7 +14,7 @@ logger = get_logger("migru.tools")
 class SmartSearchTools(Toolkit):
     """Search tools with automatic fallback mechanisms."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(name="smart_search")
         self.ddg_tools = DuckDuckGoTools()
         self.firecrawl_tools = FirecrawlTools(enable_scrape=True, enable_crawl=True)
@@ -24,14 +26,14 @@ class SmartSearchTools(Toolkit):
     ) -> str:
         """
         Smart search with automatic fallback to multiple sources.
-        
+
         Tries DuckDuckGo first, then Firecrawl search if DuckDuckGo fails.
         Returns formatted results or falls back gracefully.
-        
+
         Args:
             query: The search query
             max_results: Maximum number of results to return (default: 5)
-            
+
         Returns:
             Formatted search results or a helpful message if no results found
         """
@@ -64,10 +66,10 @@ class SmartSearchTools(Toolkit):
         # Strategy 3: Try Firecrawl search (more reliable but slower)
         try:
             logger.debug(f"Attempting Firecrawl search: {query}")
-            results = self.firecrawl_tools.search(query=query, limit=max_results)
+            results = cast(Any, self.firecrawl_tools).search(query=query, limit=max_results)
             if results and "No results found" not in str(results):
                 logger.debug("Firecrawl search successful")
-                return results
+                return results  # type: ignore
         except Exception as e:
             logger.debug(f"Firecrawl search failed: {e}")
 
@@ -85,18 +87,18 @@ class SmartSearchTools(Toolkit):
     def scrape_url(self, url: str) -> str:
         """
         Scrape content from a specific URL using Firecrawl.
-        
+
         Args:
             url: The URL to scrape
-            
+
         Returns:
             Scraped content or error message
         """
         try:
             logger.debug(f"Scraping URL: {url}")
-            content = self.firecrawl_tools.scrape_url(url=url)
+            content = cast(Any, self.firecrawl_tools).scrape_url(url=url)
             logger.debug("URL scraping successful")
-            return content
+            return cast(str, content)
         except Exception as e:
             logger.debug(f"URL scraping failed: {e}")
             return f"I couldn't access that URL right now. Error: {str(e)}"

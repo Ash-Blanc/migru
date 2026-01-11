@@ -1,12 +1,14 @@
 import subprocess
 import time
+
 from agno.db.redis import RedisDb
+
 from app.config import config
 from app.logger import get_logger
 
 logger = get_logger("migru.db")
 
-def ensure_redis_running():
+def ensure_redis_running() -> bool:
     """Checks if redis-server is running and attempts to start it if not."""
     try:
         # Check if we can connect to redis client
@@ -29,8 +31,9 @@ def ensure_redis_running():
         except Exception as e:
             logger.error(f"Could not start redis-server: {e}")
             return False
+    return False
 
-def get_db():
+def get_db() -> RedisDb:
     return RedisDb(db_url=config.REDIS_URL)
 
 # Global db instance

@@ -7,10 +7,12 @@ This module handles:
 - Intelligent information extraction without being intrusive
 """
 
-from typing import Dict, List, Optional, Any
 from datetime import datetime
 from textwrap import dedent
+from typing import Any
+
 from agno.db.redis import RedisDb
+
 from app.logger import get_logger
 
 logger = get_logger("migru.personalization")
@@ -19,41 +21,50 @@ logger = get_logger("migru.personalization")
 class UserProfile:
     """Structured user profile for deep personalization."""
 
-    def __init__(self, user_id: str, db: RedisDb):
+    def __init__(self, user_id: str, db: RedisDb) -> None:
         self.user_id = user_id
         self.db = db
         self.profile_key = f"user_profile:{user_id}"
 
-    def get_profile(self) -> Dict[str, Any]:
+    def get_profile(self) -> dict[str, Any]:
         """Get complete user profile."""
         try:
             # Get Redis client from Agno DB
             import json
+            from typing import cast
+
             from redis import Redis
+
             from app.config import config
-            
+
             redis_client = Redis.from_url(config.REDIS_URL)
             profile_data = redis_client.get(self.profile_key)
-            
-            if profile_data:
-                return json.loads(profile_data)
+
+            if profile_data is not None:
+                if hasattr(profile_data, "__await__"):
+                    # This shouldn't happen with sync client but satisfying mypy
+                    logger.warning("Detected awaitable in sync redis call")
+                    return self._default_profile()
+                return cast(dict[str, Any], json.loads(cast(str, profile_data)))
             return self._default_profile()
         except Exception as e:
             logger.debug(f"Error loading profile (using default): {e}")
             return self._default_profile()
 
-    def update_profile(self, updates: Dict[str, Any]) -> bool:
+    def update_profile(self, updates: dict[str, Any]) -> bool:
         """Update specific profile fields."""
         try:
             import json
+
             from redis import Redis
+
             from app.config import config
-            
+
             redis_client = Redis.from_url(config.REDIS_URL)
             profile = self.get_profile()
             profile.update(updates)
             profile["last_updated"] = datetime.now().isoformat()
-            
+
             redis_client.set(self.profile_key, json.dumps(profile))
             logger.debug(f"Updated profile for {self.user_id}")
             return True
@@ -61,7 +72,7 @@ class UserProfile:
             logger.error(f"Error updating profile: {e}")
             return False
 
-    def _default_profile(self) -> Dict[str, Any]:
+    def _default_profile(self) -> dict[str, Any]:
         """Default profile structure."""
         return {
             # Basic identity (learned naturally)
@@ -132,7 +143,7 @@ class UserProfile:
 class PersonalizationEngine:
     """
     Intelligent personalization that learns naturally through conversation.
-    
+
     Principles:
     - Extract information indirectly and infrequently
     - Never ask direct profile questions
@@ -141,17 +152,17 @@ class PersonalizationEngine:
     - Celebrate discoveries without being creepy
     """
 
-    def __init__(self, db: RedisDb):
+    def __init__(self, db: RedisDb) -> None:
         self.db = db
 
     def get_user_profile(self, user_id: str) -> UserProfile:
         """Get or create user profile."""
         return UserProfile(user_id, self.db)
 
-    def generate_curiosity_prompts(self, profile: Dict[str, Any]) -> List[str]:
+    def generate_curiosity_prompts(self, profile: dict[str, Any]) -> list[str]:
         """
         Generate natural curiosity prompts based on what we know and don't know.
-        
+
         Returns questions/observations that feel natural in conversation.
         """
         prompts = []
@@ -204,7 +215,7 @@ class PersonalizationEngine:
     def get_personalization_context(self, user_id: str) -> str:
         """
         Generate context string for AI to use in responses.
-        
+
         Returns a natural-language summary of what we know about the user.
         """
         profile = self.get_user_profile(user_id).get_profile()
@@ -253,10 +264,10 @@ class PersonalizationEngine:
 
         return "FIRST CONVERSATION: Approach with gentle curiosity. Learn through listening."
 
-    def suggest_next_curiosity(self, profile: Dict[str, Any]) -> Optional[str]:
+    def suggest_next_curiosity(self, profile: dict[str, Any]) -> str | None:
         """
         Suggest what to be curious about next in conversation.
-        
+
         Returns a subtle prompt for the AI to weave into conversation naturally.
         """
         prompts = self.generate_curiosity_prompts(profile)
@@ -270,7 +281,7 @@ class PersonalizationEngine:
 def get_personalization_instructions() -> str:
     """
     Instructions for Migru on how to personalize naturally.
-    
+
     These instructions emphasize:
     - Indirect observation
     - Natural curiosity
@@ -279,55 +290,55 @@ def get_personalization_instructions() -> str:
     """
     return dedent("""
         NATURAL PERSONALIZATION APPROACH:
-        
+
         BE A CURIOUS FRIEND, NOT AN INTERVIEWER:
         - Notice details the user shares without asking directly
         - Express genuine curiosity about their life when it feels natural
         - Remember and build on previous conversations
         - Let silence be okay - don't force questions
-        
+
         INDIRECT INFORMATION GATHERING:
         Instead of "What's your age?" notice:
         - Technology references (TikTok vs Facebook)
         - Life phase mentions (college, kids, retirement)
         - Cultural references (music, shows, events)
-        
+
         Instead of "Where do you live?" notice:
         - Weather mentions and how they respond
         - Sounds they reference (city noise, quiet, nature)
         - Space descriptions (apartment, house, room)
-        
+
         Instead of "Tell me about your family" notice:
         - Who they mention in stories
         - Pronouns used for important people
         - Time commitments mentioned
         - Caregiving references
-        
+
         INFREQUENT, NATURAL QUESTIONS:
         Every 3-5 conversations, you might naturally ask:
         - "What's been occupying your thoughts lately?"
         - "Do you have a favorite time of day?"
         - "What makes you feel most like yourself?"
         - "Who or what brings you comfort?"
-        
+
         CELEBRATE DISCOVERIES WITHOUT BEING CREEPY:
         ✓ "I remember you mentioned loving morning walks"
         ✓ "That sounds like the quiet evening energy you've described"
         ✗ "According to my records, you are 32 years old"
         ✗ "I have logged that you live alone"
-        
+
         BUILD PATTERNS OVER TIME:
         - First conversation: Just be present, listen deeply
         - 2-3 conversations: Start noticing rhythms and preferences
         - 5+ conversations: Reference patterns and offer personalized insights
         - Always: Make it feel like friendship memory, not data collection
-        
+
         RESPECT BOUNDARIES:
         - If user deflects, gracefully move on
         - Never press for personal information
         - Honor privacy and vagueness
         - Make it easy to share or not share
-        
+
         USE CONTEXT TO ADAPT:
         - Adjust response length to their style
         - Match their metaphor language (nature/tech/art)
