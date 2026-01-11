@@ -1,14 +1,144 @@
-# Python-generated files
+# ============================================================================
+# MIGRU - Privacy-First .gitignore
+# Ensures no user data, secrets, or personal information is ever committed
+# ============================================================================
+
+# === CRITICAL: User Data & Privacy ===
+# All user conversations, memories, and patterns stay LOCAL
+*.rdb                       # Redis database snapshots
+dump.rdb                    # Redis persistence file
+appendonly.aof              # Redis append-only file
+redis-*.rdb                 # Any Redis backup files
+user_data/                  # User data directory
+memories/                   # User memories
+conversations/              # Conversation logs
+analytics/                  # Analytics data
+patterns/                   # User pattern data
+
+# === Secrets & API Keys ===
+.env                        # Environment variables with API keys
+.env.*                      # Any environment variants
+*.env                       # All env files
+gcplogin.json               # GCP credentials
+credentials.json            # Any credentials
+secrets/                    # Secrets directory
+*.key                       # Key files
+*.pem                       # Certificate files
+*.crt                       # Certificate files
+
+# === Python Generated Files ===
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
 wheels/
-*.egg-info
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Virtual environments
-.venv
+# === Virtual Environments ===
+.venv/
+venv/
+ENV/
+env/
+.virtualenv/
 
-# Environment variables and secrets
-.env
-gcplogin.json
+# === IDE & Editor Files ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# === Testing & Coverage ===
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+coverage.xml
+*.cover
+*.log
+
+# === Logs & Debugging ===
+logs/
+*.log
+debug.log
+error.log
+*.out
+*.err
+
+# === System Files ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Letta Code Agent ===
+.letta/
+.letta-code/
+
+# === Temporary Files ===
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# === Database Files (Local Only) ===
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# === Documentation Build ===
+docs/_build/
+site/
+
+# === Package Manager ===
+pip-log.txt
+pip-delete-this-directory.txt
+.Python
+
+# === Local Configuration ===
+local_settings.py
+config.local.py
+settings.local.py
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+*.ipynb
+
+# === MyPy ===
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# === Ruff ===
+.ruff_cache/
+
+# === Keep Examples ===
+!.env.example
+!config.example.py

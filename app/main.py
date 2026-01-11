@@ -454,7 +454,8 @@ Examples:
     return parser
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for Migru CLI."""
     parser = create_argument_parser()
     args = parser.parse_args()
 
@@ -466,3 +467,7 @@ if __name__ == "__main__":
         logging.getLogger("app").setLevel(logging.INFO)
 
     run_app(args)
+
+
+if __name__ == "__main__":
+    main()
