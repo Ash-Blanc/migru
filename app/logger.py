@@ -28,9 +28,10 @@ def get_logger(name: str) -> logging.Logger:
 def suppress_verbose_logging() -> None:
     """Suppress verbose logging from third-party libraries and Agno tools."""
     # Suppress Agno's verbose tool execution logs
-    logging.getLogger("agno.tools").setLevel(logging.ERROR)
-    logging.getLogger("agno.agent").setLevel(logging.ERROR)
-    logging.getLogger("agno.team").setLevel(logging.ERROR)
+    logging.getLogger("agno.tools").setLevel(logging.CRITICAL)
+    logging.getLogger("agno.agent").setLevel(logging.CRITICAL)
+    logging.getLogger("agno.team").setLevel(logging.CRITICAL)
+    logging.getLogger("agno.memory").setLevel(logging.CRITICAL)
 
     # Suppress third-party library logs
     logging.getLogger("httpx").setLevel(logging.ERROR)

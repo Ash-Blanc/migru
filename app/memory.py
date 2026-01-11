@@ -75,6 +75,11 @@ def get_memory_manager() -> MemoryManager:
             Extract information indirectly from natural conversation.
             Honor the user's journey of self-discovery and pattern recognition.
             Never make the memory feel like data collection - it's friendship memory.
+
+            TOOL USAGE:
+            - When calling add_memory, ensure 'topics' is a list of strings (JSON array), NOT a single string.
+            - Example: topics=["wellness", "morning_routine"] (CORRECT)
+            - Example: topics="['wellness', 'morning_routine']" (INCORRECT)
         """),
     )
 
