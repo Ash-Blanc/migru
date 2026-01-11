@@ -1,27 +1,26 @@
 import argparse
 import os
 import sys
+import warnings
 from datetime import datetime
 from typing import Any
 
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.prompt import Prompt
+# Suppress pkg_resources deprecation warning from fs package
+warnings.filterwarnings("ignore", category=UserWarning, module="fs")
 
-from app.agents import (
-    cerebras_team,
-    openrouter_team,
-    personalization_engine,
-    relief_team,
+from rich.console import Console  # noqa: E402
+from rich.markdown import Markdown  # noqa: E402
+from rich.panel import Panel  # noqa: E402
+from rich.prompt import Prompt  # noqa: E402
+
+from app.config import config  # noqa: E402
+from app.exceptions import MigruError  # noqa: E402
+from app.logger import get_logger, suppress_verbose_logging  # noqa: E402
+from app.utils import (  # noqa: E402
+    memory_usage_decorator,
+    performance_monitor,
+    timing_decorator,
 )
-from app.config import config
-from app.exceptions import MigruError
-from app.logger import get_logger, suppress_verbose_logging
-from app.services.realtime_analytics import insight_generator, pattern_detector
-from app.services.user_insights import insight_extractor
-from app.streaming import process_message_for_streaming
-from app.utils import memory_usage_decorator, performance_monitor, timing_decorator
 
 # Suppress verbose logging from third-party libraries
 suppress_verbose_logging()
@@ -105,6 +104,12 @@ def display_banner(show_welcome: bool = True) -> None:
 def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: str = "Mistral AI") -> bool:
     """Run an improved CLI session with better UX."""
     performance_monitor.start_timer("cli_session")
+
+    # Lazy load heavy dependencies
+    from app.agents import personalization_engine, relief_team
+    from app.services.realtime_analytics import insight_generator, pattern_detector
+    from app.services.user_insights import insight_extractor
+    from app.streaming import process_message_for_streaming
 
     if team is None:
         team = relief_team
@@ -319,6 +324,9 @@ def run_app(args: argparse.Namespace | None = None) -> None:
     performance_monitor.start_timer("total_startup")
 
     try:
+        # Lazy load agent teams for display
+        from app.agents import cerebras_team, openrouter_team, relief_team
+
         # Ensure Redis is running for memory storage
         logger.info("Checking Redis connection...")
         from app.db import ensure_redis_running
