@@ -160,4 +160,15 @@ docker-compose up --build
 *   **Redis Pipelining**: Atomic, low-latency updates for real-time pattern tracking.
 *   **Dynamic Routing**: Intelligently switches between "Fast" (Cerebras) and "Smart" (Mistral) models based on query complexity.
 
+👉 **[Read the End-to-End Architecture Deep Dive](HOW_IT_WORKS.md)**
+
 For deep performance tuning, see [PERFORMANCE.md](PERFORMANCE.md).
+
+---
+
+## 📚 Documentation
+
+- **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** - Detailed explanation of Pathway integration and data flow
+- **[PERFORMANCE.md](PERFORMANCE.md)** - Performance optimization guide
+- **[AGENTS.md](AGENTS.md)** - Agent development guidelines
+- **[.env.example](.env.example)** - Configuration template
