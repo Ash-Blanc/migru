@@ -1,6 +1,6 @@
 # Migru
 
-Migru is a warm, AI-powered companion designed to support you through migraines and stress with empathy and research-backed relief strategies. It combines ultra-fast responses with deep, personalized wisdom.
+Migru is a **local-first**, personal, and private AI-powered companion designed to support you through migraines and stress with empathy and research-backed relief strategies. It combines ultra-fast responses with deep, personalized wisdom, while keeping your data under your control.
 
 ## ✨ Showcase
 
@@ -154,6 +154,7 @@ docker-compose up --build
 
 ## 🏗️ Architecture Highlights
 
+*   **Local-First Privacy**: Your conversation history and patterns are stored in your own local Redis instance, ensuring your wellness data stays private.
 *   **Adaptive Context**: Automatically adjusts persona (calm vs. energetic) based on your detected mood.
 *   **Data Fusion**: Correlates chat logs with simulated biometric streams using **Pathway**.
 *   **Redis Pipelining**: Atomic, low-latency updates for real-time pattern tracking.
