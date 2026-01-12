@@ -69,7 +69,8 @@ class UserProfile:
             logger.debug(f"Updated profile for {self.user_id}")
             return True
         except Exception as e:
-            logger.error(f"Error updating profile: {e}")
+            # Downgraded to debug to suppress CLI noise when Redis is unavailable
+            logger.debug(f"Error updating profile: {e}")
             return False
 
     def _default_profile(self) -> dict[str, Any]:
@@ -136,6 +137,7 @@ class UserProfile:
                 "last_updated": datetime.now().isoformat(),
                 "total_conversations": 0,
                 "insights_gathered": 0,
+                "onboarding_completed": False,
             },
         }
 

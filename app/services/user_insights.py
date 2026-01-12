@@ -6,7 +6,8 @@ and insights about the user's life, preferences, and wellness journey.
 """
 
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
+from typing import cast
 
 from app.db import db
 from app.logger import get_logger
@@ -37,6 +38,7 @@ class InsightExtractor:
             "relationships": self._extract_relationships(message),
             "sensitivities": self._extract_sensitivities(message),
             "wellness_patterns": self._extract_wellness_patterns(message),
+            "lifestyle_factors": self._extract_lifestyle_factors(message),  # New Evidence-Based Extraction
             "communication_style": self._extract_communication_style(message),
         }
 
@@ -110,7 +112,7 @@ class InsightExtractor:
             work_type = "remote"
         elif any(word in message_lower for word in ["office", "commute", "go to work"]):
             work_type = "office"
-        elif any(word in message_lower for word in ["shift work", "night shift", "swing shift"]):
+        elif any(word in message_lower for word in ["shift work", "night shift", "swing shift", "rotating schedule", "night watch"]):
             work_type = "shift_work"
         elif any(word in message_lower for word in ["freelance", "gig", "flexible"]):
             work_type = "flexible"
@@ -118,7 +120,7 @@ class InsightExtractor:
         schedule = None
         if "9 to 5" in message_lower or "9-5" in message_lower:
             schedule = "9-5"
-        elif any(word in message_lower for word in ["night shift", "overnight"]):
+        elif any(word in message_lower for word in ["night shift", "overnight", "graveyard shift"]):
             schedule = "night_shift"
         elif "flexible schedule" in message_lower:
             schedule = "flexible"
@@ -196,12 +198,12 @@ class InsightExtractor:
         message_lower = message.lower()
         sensitivities: dict[str, Any] = {}
 
-        # Weather sensitivity
-        if any(word in message_lower for word in ["weather affects", "barometric", "pressure changes"]):
+        # Weather sensitivity (Expanded based on research)
+        if any(word in message_lower for word in ["weather affects", "barometric", "pressure changes", "storm coming", "rain triggers"]):
             sensitivities["weather_sensitive"] = True
 
-        # Light sensitivity
-        if any(word in message_lower for word in ["bright lights", "light sensitive", "dim lighting"]):
+        # Light sensitivity (Expanded to include glare)
+        if any(word in message_lower for word in ["bright lights", "light sensitive", "dim lighting", "glare", "sunlight", "sun glare"]):
             sensitivities["light_sensitive"] = True
 
         # Noise sensitivity
@@ -270,6 +272,31 @@ class InsightExtractor:
             style["emoji_usage"] = "minimal"
 
         return style if style else None
+
+    def _extract_lifestyle_factors(self, message: str) -> dict[str, Any] | None:
+        """Extract evidence-based lifestyle factors (Research: NIH, Cleveland Clinic)."""
+        factors = {}
+        message_lower = message.lower()
+
+        # Meal Consistency (Research: Skipping meals is a major trigger)
+        if any(word in message_lower for word in ["skipped lunch", "missed breakfast", "forgot to eat", "haven't eaten"]):
+            factors["meal_consistency"] = "irregular"
+        elif any(word in message_lower for word in ["regular meals", "eat on time", "always eat"]):
+            factors["meal_consistency"] = "regular"
+
+        # Hydration (Research: Dehydration trigger)
+        if any(word in message_lower for word in ["thirsty", "dehydrated", "need water", "dry mouth"]):
+            factors["hydration_status"] = "needs_improvement"
+        elif any(word in message_lower for word in ["drink water", "hydrated", "water bottle"]):
+            factors["hydration_status"] = "good"
+
+        # Sleep Hygiene (Research: Oversleeping/Undersleeping)
+        if any(word in message_lower for word in ["slept in", "overslept", "too much sleep"]):
+            factors["sleep_pattern"] = "oversleeping"
+        elif any(word in message_lower for word in ["insomnia", "can't sleep", "up all night"]):
+            factors["sleep_pattern"] = "insomnia"
+
+        return factors if factors else None
 
     def update_user_profile_from_insights(self, user_id: str, insights: dict[str, Any]) -> bool:
         """Update user profile with extracted insights."""
@@ -363,7 +390,8 @@ class InsightExtractor:
             return True
 
         except Exception as e:
-            logger.error(f"Error updating profile from insights: {e}")
+            # Downgraded to debug to suppress CLI noise when Redis is unavailable
+            logger.debug(f"Error updating profile from insights: {e}")
             return False
 
 

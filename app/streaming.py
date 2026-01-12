@@ -10,8 +10,10 @@ This module transforms Migru into a dynamic Real-Time Analyst that:
 """
 
 import json
-from datetime import datetime, timedelta
-from typing import Any, cast
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import cast
 
 import pathway as pw
 
@@ -33,40 +35,146 @@ class RealtimeWellnessStream:
         self.schema = self._define_schema()
 
     def _define_schema(self) -> Any:
-        """Define Pathway schema for wellness events."""
+        """Define Pathway schemas for wellness events."""
         class WellnessEventSchema(pw.Schema):
             user_id: str
             timestamp: str
-            event_type: str  # 'message', 'symptom', 'relief', 'activity'
+            event_type: str
             content: str
-            metadata: str  # JSON string with additional context
+            metadata: str
 
-        return WellnessEventSchema
+        class BiometricEventSchema(pw.Schema):
+            user_id: str
+            timestamp: str
+            heart_rate: int
+            sleep_score: int
+            step_count: int
 
-    def create_wellness_stream(self, input_connector: Any) -> pw.Table:
-        """
-        Create real-time wellness analytics stream.
+        return WellnessEventSchema, BiometricEventSchema
 
-        Args:
-            input_connector: Pathway connector for streaming input
-
-        Returns:
-            Pathway table with streaming computations
-        """
-        # Create input stream
-        events = pw.io.python.read(
-            input_connector,
-            schema=self.schema,
-            autocommit_duration_ms=50,  # Optimized for ultra-low latency
+    def create_wellness_stream(self, host: str = "localhost", port: int = 6379, password: str | None = None) -> pw.Table:
+        """Create real-time wellness analytics stream connected to Redis."""
+        WellnessEventSchema, _ = self.schema
+        
+        events = pw.io.redis.read_stream(
+            host=host,
+            port=port,
+            password=password,
+            stream_keys=["wellness_stream:*"],
+            schema=WellnessEventSchema,
+            autocommit_duration_ms=50,
+            beginning=True
         )
 
-        # Parse timestamps and metadata
         events = events.with_columns(
             parsed_time=pw.this.timestamp.dt.strptime("%Y-%m-%dT%H:%M:%S"),
             parsed_metadata=cast(Any, pw.this.metadata).json.parse(),
         )
-
         return events  # type: ignore
+
+    def create_biometric_stream(self, host: str = "localhost", port: int = 6379, password: str | None = None) -> pw.Table:
+        """Create simulated biometric data stream (Heart Rate, Sleep)."""
+        _, BiometricEventSchema = self.schema
+        
+        # In a real app, this would read from a different Redis key populated by wearables
+        # For now, we simulate or read from a placeholder key
+        events = pw.io.redis.read_stream(
+            host=host,
+            port=port,
+            password=password,
+            stream_keys=["biometric_stream:*"],
+            schema=BiometricEventSchema,
+            autocommit_duration_ms=100,
+            beginning=True
+        )
+        
+        events = events.with_columns(
+             parsed_time=pw.this.timestamp.dt.strptime("%Y-%m-%dT%H:%M:%S")
+        )
+        return events # type: ignore
+
+    def fuse_streams(self, wellness_events: pw.Table, biometric_events: pw.Table) -> pw.Table:
+        """
+        Data Fusion: Join conversation events with biometric data.
+        
+        Correlates what the user SAYS with what their body DOES.
+        """
+        # Temporal join: Match events within a 5-minute window
+        # We want to know: "What was their heart rate when they said 'I feel anxious'?"
+        
+        fused = wellness_events.windowby(
+            pw.this.parsed_time,
+            window=pw.temporal.sliding(hop=timedelta(minutes=1), duration=timedelta(minutes=5)),
+            behavior=pw.temporal.exactly_once_behavior()
+        ).join(
+            biometric_events.windowby(
+                pw.this.parsed_time,
+                window=pw.temporal.sliding(hop=timedelta(minutes=1), duration=timedelta(minutes=5)),
+                behavior=pw.temporal.exactly_once_behavior()
+            ),
+            pw.this.user_id == pw.right.user_id,
+            how=pw.JoinMode.LEFT
+        ).select(
+            user_id=pw.this.user_id,
+            content=pw.this.content,
+            event_type=pw.this.event_type,
+            heart_rate=pw.right.heart_rate,
+            timestamp=pw.this.parsed_time
+        )
+        
+        return fused # type: ignore
+
+    def run_analytics_pipeline(self, host: str = "localhost", port: int = 6379, password: str | None = None) -> None:
+        """
+        Run the full analytics pipeline with Data Fusion and Reactive Alerts.
+        """
+        # 1. Ingest
+        wellness_events = self.create_wellness_stream(host, port, password)
+        biometric_events = self.create_biometric_stream(host, port, password)
+        
+        # 2. Enrich (Model Integration)
+        # enriched_events = self.enrich_with_semantics(wellness_events)
+        
+        # 3. Fuse
+        fused_data = self.fuse_streams(wellness_events, biometric_events)
+        
+        # 4. Analyze (Stateful Computation)
+        temporal_patterns = self.detect_temporal_patterns(wellness_events)
+        
+        # 5. React (Event-driven Architecture)
+        self.trigger_reactive_alerts(fused_data, host, port, password)
+        
+        # 6. Output (Write back to Redis for persistence/dashboarding)
+        # pw.io.redis.write_stream(...) 
+        
+        # Log startup
+        self.logger.info("Pathway Analytics Pipeline Initialized (Wellness + Biometrics)")
+
+    def trigger_reactive_alerts(self, fused_stream: pw.Table, host: str, port: int, password: str | None) -> None:
+        """
+        Generate real-time alerts based on fused data logic.
+        
+        Example: High Heart Rate + "Anxious" keyword = High Priority Alert
+        """
+        alerts = fused_stream.filter(
+            (pw.this.event_type == "symptom") & 
+            (pw.this.heart_rate > 100)
+        ).select(
+            user_id=pw.this.user_id,
+            alert_type=pw.lit("High Physiological Stress"),
+            message=pw.lit("User reporting symptoms with elevated heart rate."),
+            timestamp=pw.this.timestamp
+        )
+        
+        # Write to Redis Stream for the main agent to consume
+        pw.io.redis.write_stream(
+            alerts,
+            host=host,
+            port=port,
+            password=password,
+            stream_key="migru_alerts",
+            maxlen=100
+        )
 
     def detect_temporal_patterns(self, events: pw.Table) -> pw.Table:
         """

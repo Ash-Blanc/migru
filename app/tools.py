@@ -1,6 +1,7 @@
 """Custom tools with fallback mechanisms for robust search."""
 
-from typing import Any, cast
+from typing import Any
+from typing import cast
 
 from agno.tools import Toolkit
 from agno.tools.duckduckgo import DuckDuckGoTools

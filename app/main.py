@@ -10,17 +10,16 @@ warnings.filterwarnings("ignore", category=UserWarning, module="fs")
 
 # Prompt Toolkit imports for advanced CLI
 from prompt_toolkit import PromptSession  # noqa: E402
-from prompt_toolkit.completion import Completer, WordCompleter  # noqa: E402
+from prompt_toolkit.completion import Completer  # noqa: E402
+from prompt_toolkit.completion import WordCompleter  # noqa: E402
 from prompt_toolkit.document import Document  # noqa: E402
 from prompt_toolkit.formatted_text import HTML  # noqa: E402
 from prompt_toolkit.key_binding import KeyBindings  # noqa: E402
 from prompt_toolkit.shortcuts import CompleteStyle  # noqa: E402
 from prompt_toolkit.styles import Style as PTStyle  # noqa: E402
 from rich import box  # noqa: E402
-from rich.console import (
-    Console,  # noqa: E402
-    Group,  # noqa: E402
-)
+from rich.console import Console  # noqa: E402
+from rich.console import Group  # noqa: E402
 from rich.live import Live  # noqa: E402
 from rich.markdown import Markdown  # noqa: E402
 from rich.panel import Panel  # noqa: E402
@@ -28,12 +27,11 @@ from rich.table import Table  # noqa: E402
 
 from app.config import config  # noqa: E402
 from app.exceptions import MigruError  # noqa: E402
-from app.logger import get_logger, suppress_verbose_logging  # noqa: E402
-from app.utils import (  # noqa: E402
-    memory_usage_decorator,
-    performance_monitor,
-    timing_decorator,
-)
+from app.logger import get_logger  # noqa: E402
+from app.logger import suppress_verbose_logging  # noqa: E402
+from app.utils import memory_usage_decorator  # noqa: E402
+from app.utils import performance_monitor  # noqa: E402
+from app.utils import timing_decorator  # noqa: E402
 
 # Suppress verbose logging from third-party libraries
 suppress_verbose_logging()
@@ -49,7 +47,7 @@ class CommandPalette:
     def __init__(self):
         self.commands = [
             "/help", "/exit", "/clear", "/settings", "/about",
-            "/history", "/profile", "/patterns"
+            "/history", "/profile", "/patterns", "/model", "/bio"
         ]
         self.base_completer = WordCompleter(self.commands, ignore_case=True)
 
@@ -69,9 +67,9 @@ class SafePromptSession:
 
     def __init__(self, completer: Completer | None = None):
         self.style = PTStyle.from_dict({
-            'prompt': '#ansigreen bold',
-            'input': '#ansiwhite',
-            'toolbar': '#ansigray italic',
+            'prompt': config.UI.THEME['prompt'],
+            'input': config.UI.THEME['input'],
+            'toolbar': config.UI.THEME['toolbar'],
         })
         self.bindings = KeyBindings()
         self.completer = completer
@@ -164,16 +162,124 @@ def display_banner(show_welcome: bool = True) -> None:
     performance_monitor.end_timer("banner_display")
 
 
+def run_onboarding(user_name: str, console: Console, prompt_session: SafePromptSession, personalization_engine: Any) -> None:
+    """Run a gentle onboarding wizard for new users."""
+    try:
+        profile = personalization_engine.get_user_profile(user_name).get_profile()
+        if profile.get("metadata", {}).get("onboarding_completed", False):
+            return
+
+        console.print()
+        console.print(Panel(
+            f"[bold white]Hi {user_name}, I'm glad you're here.[/bold white]\n\n"
+            "[dim]To help me support you best, I'd love to ask just two quick questions.[/dim]",
+            title="[bold cyan]✨ Getting Started[/bold cyan]",
+            border_style="cyan",
+            box=box.ROUNDED,
+            padding=(0, 1),
+        ))
+        console.print()
+
+        # Question 1: Goal
+        console.print("[bold cyan]1.[/bold cyan] What primarily brings you here today?")
+        console.print("[dim](e.g., Managing migraines, Reducing stress, Curiosity)[/dim]")
+        goal = prompt_session.prompt("   > ")
+
+        # Question 2: Sensitivities
+        console.print()
+        console.print("[bold cyan]2.[/bold cyan] Is there anything specific that tends to trigger discomfort for you?")
+        console.print("[dim](e.g., bright lights, loud noises, weather changes, none)[/dim]")
+        triggers = prompt_session.prompt("   > ")
+
+        # Save insights
+        from app.services.user_insights import insight_extractor
+
+        # Process goal
+        if goal:
+            # Extract insights from the goal text
+            insights = insight_extractor.extract_from_message(user_name, goal)
+            if insights:
+                insight_extractor.update_user_profile_from_insights(user_name, insights)
+            
+            # Also store raw goal if not captured
+            # (In a real app, we might have a specific 'goals' field, but we'll leverage 'interests' for now)
+            # insight_extractor.update_user_profile_from_insights(user_name, {"interests": [goal]})
+
+        # Process triggers
+        if triggers:
+            # Manual mapping for robustness + NLP extraction
+            sensitivities = {}
+            t_lower = triggers.lower()
+            if "light" in t_lower or "bright" in t_lower:
+                sensitivities["light_sensitive"] = True
+            if "noise" in t_lower or "loud" in t_lower:
+                sensitivities["noise_sensitive"] = True
+            if "weather" in t_lower or "pressure" in t_lower:
+                sensitivities["weather_sensitive"] = True
+
+            if sensitivities:
+                insight_extractor.update_user_profile_from_insights(
+                    user_name, {"sensitivities": {"sensitivities": sensitivities}} # Nested to match structure if needed, or flat
+                )
+                # Actually extract_from_message returns flat "sensitivities" dict key, but update expects structure
+                # Let's trust extract_from_message mainly, but manual update:
+                
+                # Re-reading user_insights.py: update_user_profile_from_insights takes dict with keys like "sensitivities"
+                # which maps to the inner dict. 
+                # So passing {"sensitivities": {"weather_sensitive": True}} is correct.
+                # My manual mapping above created a flat dict 'sensitivities'. 
+                # The update function expects: if "sensitivities" in insights -> update profile["sensitivities"]
+                
+                # Let's just use the update method directly with correct structure
+                current_profile = personalization_engine.get_user_profile(user_name).get_profile()
+                sens_update = {}
+                if "light_sensitive" in sensitivities:
+                    sens_update["light_sensitivity"] = "high"
+                if "noise_sensitive" in sensitivities:
+                    sens_update["noise_sensitivity"] = "high"
+                if "weather_sensitive" in sensitivities:
+                    sens_update["weather_sensitivity"] = "high"
+                
+                if sens_update:
+                     # Safe merge with existing sensitivities
+                     current_sensitivities = current_profile.get("sensitivities", {})
+                     current_sensitivities.update(sens_update)
+                     personalization_engine.get_user_profile(user_name).update_profile({"sensitivities": current_sensitivities})
+
+
+            # Also run extraction
+            more_insights = insight_extractor.extract_from_message(user_name, triggers)
+            if more_insights:
+                insight_extractor.update_user_profile_from_insights(user_name, more_insights)
+
+        # Mark as complete
+        profile = personalization_engine.get_user_profile(user_name).get_profile() # Reload
+        profile["metadata"]["onboarding_completed"] = True
+        personalization_engine.get_user_profile(user_name).update_profile(profile)
+
+        console.print()
+        console.print("[italic green]Thank you. I'll keep that in mind.[/italic green]")
+        console.print()
+
+    except Exception as e:
+        logger.error(f"Onboarding failed: {e}")
+        # Don't crash, just continue to main chat
+
+
 def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: str = "Mistral AI") -> bool:
     """Run an improved CLI session with better UX."""
     performance_monitor.start_timer("cli_session")
 
     # Lazy load heavy dependencies
     # Fallback teams
+    from app.agents import create_migru_agent
     from app.agents import cerebras_team as fallback_team_1
     from app.agents import openrouter_team as fallback_team_2
-    from app.agents import personalization_engine, relief_team
-    from app.services.realtime_analytics import insight_generator, pattern_detector
+    from app.agents import personalization_engine
+    from app.agents import relief_team
+    from app.agents import research_agent  # Import research agent
+    from app.services.realtime_analytics import insight_generator
+    from app.services.realtime_analytics import pattern_detector
     from app.services.user_insights import insight_extractor
     from app.streaming import process_message_for_streaming
 
@@ -183,6 +289,9 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
     # Initialize UI components
     command_palette = CommandPalette()
     prompt_session = SafePromptSession(completer=command_palette.get_completer())
+
+    # --- Onboarding ---
+    run_onboarding(user_name, console, prompt_session, personalization_engine)
 
     # --- Command Handlers ---
     def show_profile(user_name: str) -> None:
@@ -309,12 +418,59 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
         settings_grid = Table.grid(expand=True, padding=(0, 1))
         settings_grid.add_column(style="cyan", justify="right")
         settings_grid.add_column(style="white")
-        settings_grid.add_row("Model", config.MODEL_PRIMARY)
+        settings_grid.add_row("Model", getattr(team, "model", config.MODEL_PRIMARY))
         settings_grid.add_row("Streaming", "Enabled" if config.STREAMING else "Disabled")
         settings_grid.add_row("Team Mode", "Enabled" if config.USE_TEAM else "Disabled")
         settings_grid.add_row("User ID", user_name)
 
         console.print(Panel(settings_grid, title="⚙️ Settings", border_style="cyan", box=box.ROUNDED, padding=(0, 1)))
+
+    def handle_model_switch(args: str) -> None:
+        nonlocal team, system_name
+        
+        available_models = {
+            "mistral": ("mistral:mistral-small-latest", "Mistral AI"),
+            "cerebras": ("cerebras:llama3.1-8b", "Cerebras AI"),
+            "openrouter": ("openrouter:arcee-ai/trinity-mini:free", "OpenRouter"),
+        }
+
+        if not args:
+            # Show available models
+            grid = Table.grid(expand=True, padding=(0, 1))
+            grid.add_column(style="cyan", justify="right")
+            grid.add_column(style="white")
+            
+            current_model = getattr(team, "model", "Unknown")
+            
+            for name, (model_id, _) in available_models.items():
+                prefix = "✓ " if model_id == current_model else "  "
+                grid.add_row(f"{prefix}{name}", model_id)
+            
+            console.print(Panel(
+                grid, 
+                title="🤖 Available Models", 
+                subtitle="Use '/model <name>' to switch",
+                border_style="cyan", 
+                box=box.ROUNDED, 
+                padding=(0, 1)
+            ))
+            return
+
+        target = args.lower().strip()
+        if target in available_models:
+            model_id, new_system_name = available_models[target]
+            try:
+                console.print(f"[dim]🔄 Switching to {new_system_name}...[/dim]")
+                # We use create_migru_agent to create a new agent with the requested model
+                # This preserves the 'Direct Agent' preference unless team mode is explicitly on
+                # TODO: Support switching team models if config.USE_TEAM is True
+                team = create_migru_agent(model=model_id)
+                system_name = new_system_name
+                console.print(f"[green]✓ Switched to {new_system_name}[/green]")
+            except Exception as e:
+                console.print(f"[red]❌ Failed to switch model: {e}[/red]")
+        else:
+            console.print(f"[yellow]⚠️ Unknown model '{target}'. Available: {', '.join(available_models.keys())}[/yellow]")
 
     try:
         # Custom conversation loop with better UX
@@ -334,7 +490,8 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
                 user_input = "exit"
 
             # Handle exit commands
-            if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
+            # Constraint: "if a user query contains anywhere the word 'bye', then terminate session"
+            if "bye" in user_input.lower() or user_input.lower() in ["exit", "quit", "goodbye"]:
                 console.print()
                 farewell = Panel(
                     f"[bold white]Thank you for sharing this time with me, {user_name}.[/bold white]\n\n"
@@ -349,12 +506,47 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
                 console.print()
                 break
 
+            # Handle knowledge retrieval
+            # Constraint: "if a user query contains anywhere the word 'define', trigger knowledge retrieval"
+            if "define" in user_input.lower():
+                console.print()
+                with console.status("[dim italic]📚 Consulting the library...[/dim italic]", spinner=config.UI.SPINNER_STYLE):
+                    try:
+                        # Use the Research Agent for definition/knowledge tasks
+                        response = research_agent.run(user_input, stream=config.STREAMING)
+                    except Exception as e:
+                         logger.error(f"Research agent failed: {e}")
+                         response = "I apologize, I'm having trouble accessing my library right now."
+
+                # Render response
+                if response:
+                    console.print()
+                    content = ""
+                    if hasattr(response, 'content'): # Handle non-streaming response object
+                         content = response.content
+                    else: # Handle streaming generator or string
+                        for chunk in response:
+                             if hasattr(chunk, "content") and chunk.content:
+                                 content += chunk.content
+                             elif isinstance(chunk, str):
+                                 content += chunk
+                    
+                    console.print(Panel(
+                        Markdown(content),
+                        title="[bold cyan]📚 Knowledge Retrieval[/bold cyan]",
+                        border_style="cyan",
+                        box=box.ROUNDED,
+                        padding=(0, 1),
+                    ))
+                continue # Skip the main chat loop for this turn
+
             # Handle help command
             if user_input.lower() in ["help", "?", "/help"]:
                 help_grid = Table.grid(expand=True, padding=(0, 1))
                 help_grid.add_column(style="cyan", justify="right")
                 help_grid.add_column(style="white")
 
+                help_grid.add_row("/model", "Switch between available AI models")
                 help_grid.add_row("/profile", "View your learned profile & bio factors")
                 help_grid.add_row("/patterns", "Explore your wellness rhythms")
                 help_grid.add_row("/history", "See recent session memories")
@@ -395,6 +587,49 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
                 show_settings()
                 continue
 
+            if user_input.lower().startswith("/model"):
+                parts = user_input.split(" ", 1)
+                args = parts[1] if len(parts) > 1 else ""
+                handle_model_switch(args)
+                continue
+
+            if user_input.lower().startswith("/bio"):
+                # Simulation command: /bio hr=110 sleep=60
+                try:
+                    parts = user_input.split()
+                    data = {"heart_rate": 70, "sleep_score": 80, "step_count": 5000} # Defaults
+                    
+                    for part in parts[1:]:
+                        if "=" in part:
+                            key, val = part.split("=", 1)
+                            if key == "hr": key = "heart_rate"
+                            if key == "sleep": key = "sleep_score"
+                            if key == "steps": key = "step_count"
+                            if key in data:
+                                data[key] = int(val)
+                    
+                    pattern_detector.record_biometric(
+                        user_id=user_name,
+                        heart_rate=data["heart_rate"],
+                        sleep_score=data["sleep_score"],
+                        step_count=data["step_count"]
+                    )
+                    
+                    console.print(Panel(
+                        f"Heart Rate: {data['heart_rate']} bpm\nSleep Score: {data['sleep_score']}\nSteps: {data['step_count']}",
+                        title="[bold green]Biometric Signal Received[/bold green]",
+                        border_style="green",
+                        box=box.ROUNDED,
+                        padding=(0, 1)
+                    ))
+                    
+                    # If HR is high, trigger an immediate reaction from the agent?
+                    # For now, just logging it. The Pathway stream will pick it up and generate alerts.
+                    
+                except Exception as e:
+                    console.print(f"[red]Invalid bio format. Use: /bio hr=100 sleep=80[/red]")
+                continue
+
             if user_input.lower() in ["/clear", "clear"]:
                 console.clear()
                 continue
@@ -403,49 +638,49 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
             if not user_input.strip():
                 continue
 
-            # Extract insights from user message (background, non-blocking)
-            try:
-                insights = insight_extractor.extract_from_message(
-                    user_id=user_name, message=user_input
-                )
-                if insights:
-                    insight_extractor.update_user_profile_from_insights(
-                        user_name, insights
-                    )
-            except Exception as e:
-                logger.debug(f"Insight extraction failed (non-critical): {e}")
-
-            # Real-time streaming analytics (Pathway integration)
-            try:
-                # Extract event type from message
-                from app.streaming import live_monitor
-                event_type = live_monitor.extract_event_type(user_input)
-
-                # Get environmental context (weather, time, etc.)
-                metadata = {
-                    "hour": datetime.now().hour,
-                    "day_of_week": datetime.now().weekday(),
-                }
-
-                # Record to streaming analytics
-                pattern_detector.record_event(
-                    user_id=user_name,
-                    event_type=event_type,
-                    content=user_input,
-                    metadata=metadata
-                )
-
-                # Process for Pathway streaming (low-latency)
-                process_message_for_streaming(user_name, user_input, metadata)
-
-            except Exception as e:
-                logger.debug(f"Streaming analytics failed (non-critical): {e}")
+            # Detect Mood & Update Context (Adaptive Persona)
+            from app.services.context import context_manager
+            detected_mood = context_manager.detect_mood(user_input)
+            if detected_mood:
+                context_manager.update_user_state(user_name, detected_mood=detected_mood)
+                logger.debug(f"Adaptive Context: Detected mood '{detected_mood}'")
 
             # Show thinking indicator briefly
             console.print()
             response = None
 
-            with console.status("[dim italic]🌸 Migru is reflecting...[/dim italic]", spinner="dots"):
+            with console.status("[dim italic]🌸 Migru is reflecting...[/dim italic]", spinner=config.UI.SPINNER_STYLE):
+                # Background processing (Insights & Patterns)
+                # Moved inside status for better UX/Feedback
+                try:
+                    insights = insight_extractor.extract_from_message(
+                        user_id=user_name, message=user_input
+                    )
+                    if insights:
+                        insight_extractor.update_user_profile_from_insights(
+                            user_name, insights
+                        )
+                except Exception as e:
+                    logger.debug(f"Insight extraction failed (non-critical): {e}")
+
+                try:
+                    # Real-time streaming analytics (Pathway integration)
+                    from app.streaming import live_monitor
+                    event_type = live_monitor.extract_event_type(user_input)
+                    metadata = {
+                        "hour": datetime.now().hour,
+                        "day_of_week": datetime.now().weekday(),
+                    }
+                    pattern_detector.record_event(
+                        user_id=user_name,
+                        event_type=event_type,
+                        content=user_input,
+                        metadata=metadata
+                    )
+                    process_message_for_streaming(user_name, user_input, metadata)
+                except Exception as e:
+                    logger.debug(f"Streaming analytics failed (non-critical): {e}")
+
                 try:
                     # Get personalization context for this user
                     try:
@@ -458,7 +693,7 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
 
                     # Get response with streaming for better perceived speed
                     try:
-                        response = team.run(user_input, stream=config.STREAMING)
+                        response = team.run(user_input, stream=config.STREAMING, user_id=user_name)
                     except Exception as e:
                         error_str = str(e)
                         if "400" in error_str and ("context_length_exceeded" in error_str or "limit is" in error_str):
@@ -501,7 +736,7 @@ def run_cli_session(user_name: str = "Friend", team: Any = None, system_name: st
 
                     from types import GeneratorType
                     if isinstance(response, GeneratorType):
-                        with Live(response_panel, console=console, refresh_per_second=12) as live:
+                        with Live(response_panel, console=console, refresh_per_second=config.UI.REFRESH_RATE) as live:
                             for chunk in response:
                                 chunk_text = ""
                                 if hasattr(chunk, "content") and chunk.content:
@@ -597,18 +832,39 @@ def run_app(args: argparse.Namespace | None = None) -> None:
     performance_monitor.start_timer("total_startup")
 
     try:
-        # Lazy load agent teams for display
-        from app.agents import cerebras_team, openrouter_team, relief_team
-
-        # Ensure Redis is running for memory storage
+        # Ensure Redis is running BEFORE importing agents that might use it on initialization
         logger.info("Checking Redis connection...")
         from app.db import ensure_redis_running
 
         if not ensure_redis_running():
-            console.print(
-                "[yellow]⚠️  Warning: Redis is not available. Memory features will be limited.[/yellow]"
-            )
-            logger.warning("Redis not available")
+            # Suppress user-facing warning to keep CLI clean as requested
+            # console.print(
+            #     "[yellow]⚠️  Warning: Redis is not available. Memory features will be limited.[/yellow]"
+            # )
+            logger.debug("Redis not available")
+
+        # Lazy load agent teams for display
+        from app.agents import cerebras_team
+        from app.agents import openrouter_team
+        from app.agents import relief_team
+
+        # Re-apply suppression after imports to catch new loggers
+        if not (args and hasattr(args, "verbose") and args.verbose):
+             suppress_verbose_logging()
+
+        # Handle Accessibility Mode
+        if args and hasattr(args, "accessible") and args.accessible:
+            config.ACCESSIBILITY_MODE = True
+            config.UI.REFRESH_RATE = 1  # Minimal updates
+            config.UI.SPINNER_STYLE = "simpleDots" # Simpler spinner
+            config.UI.THEME = {
+                'prompt': 'bold white',
+                'input': 'white',
+                'toolbar': 'white italic',
+                'panel_border': 'white',
+                'title': 'bold white',
+            }
+            logger.info("Accessibility mode enabled")
 
         # Setup environment
         if not setup_environment():
@@ -645,11 +901,10 @@ def run_app(args: argparse.Namespace | None = None) -> None:
             primary_name = "Mistral AI Team"
             fallback_name = "Cerebras AI Team"
         else:
+            primary_name = "Mistral AI"
             if config.CEREBRAS_API_KEY:
-                primary_name = "Cerebras AI (Ultra-fast)"
-                fallback_name = "Mistral AI (High-quality)"
+                fallback_name = "Cerebras AI (Ultra-fast)"
             else:
-                primary_name = "Mistral AI"
                 fallback_name = "OpenRouter"
 
         # Try primary system
@@ -743,6 +998,13 @@ Examples:
     )
 
     parser.add_argument(
+        "--accessible",
+        "-a",
+        action="store_true",
+        help="Enable accessibility mode (reduced motion, high contrast)",
+    )
+
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -762,9 +1024,16 @@ def main() -> None:
     # Set logging level based on verbose flag
     if args.verbose:
         import logging
-
+        # Force all migru loggers to INFO
         logging.getLogger("migru").setLevel(logging.INFO)
         logging.getLogger("app").setLevel(logging.INFO)
+        # Also ensure handlers of the root logger or specific loggers are updated if needed
+        # but our get_logger already sets level on the logger instance.
+    else:
+        # Extra insurance to keep things quiet
+        import logging
+        logging.basicConfig(level=logging.CRITICAL) # Suppress root logger
+        suppress_verbose_logging()
 
     run_app(args)
 

@@ -1,6 +1,6 @@
 # Migru
 
-Migru is a warm, AI-powered companion designed to support you through migraines and stress with empathy and research-backed relief strategies.
+Migru is a warm, AI-powered companion designed to support you through migraines and stress with empathy and research-backed relief strategies. It combines ultra-fast responses with deep, personalized wisdom.
 
 ## ✨ Showcase
 
@@ -38,190 +38,125 @@ Migru is a warm, AI-powered companion designed to support you through migraines 
 </tr>
 </table>
 
-**Features:**
-- 🎨 Rich, colorful terminal UI with bordered panels
-- ⚡ Blazing fast responses (1-3s) with Cerebras llama3.1-8b
-- 🔄 Smart fallback system (Mistral → Gemini)
-- 🧠 Intelligent search with automatic retry mechanisms
-- 💾 Persistent memory with Redis
-- 🌤️ Weather-aware contextual responses
-- 🔇 Clean output (no verbose errors or traces)
-
 </div>
 
 ---
 
-## 🚀 Quick Start (Recommended)
+## 🛠️ Installation
 
-The easiest way to get started.
+### Prerequisites
+- Python 3.12+
+- Redis (local or Docker)
+- `uv` package manager
 
-**1. Setup (One-Liner)**
-Run this script to automatically install tools (`uv`), dependencies, and create your config file:
+### 1. Automatic Setup (Recommended)
+Run the setup script to install dependencies and create your configuration:
 ```bash
 ./setup.sh
 ```
 
-**2. Add Keys**
-Open the newly created `.env` file and add your keys:
+### 2. Configure Environment
+Edit the generated `.env` file with your API keys:
 ```env
-MISTRAL_API_KEY=...    # Get from https://console.mistral.ai/
-FIRECRAWL_API_KEY=...  # Get from https://www.firecrawl.dev/
-OPENWEATHER_API_KEY=... # Get from https://openweathermap.org/api
-CEREBRAS_API_KEY=...    # Optional: High-speed fallback (https://cerebras.ai)
-OPENROUTER_API_KEY=...  # Optional: Multi-model fallback (https://openrouter.ai)
-```
-
-**3. Run**
-```bash
-uv run -m app.main
+MISTRAL_API_KEY=...     # Primary Intelligence
+FIRECRAWL_API_KEY=...   # Deep Research
+OPENWEATHER_API_KEY=... # Environmental Context
+CEREBRAS_API_KEY=...    # Ultra-Fast Responses (Recommended)
 ```
 
 ---
 
-## 🐳 Docker Setup (Advanced)
+## 💻 Usage & Commands
 
-For users who prefer containerization. This handles the Application and Redis database automatically.
+Migru is primarily a CLI application. Here is how to use it effectively.
 
-**1. Configure**
-Create your environment file:
+### Basic Start
+Launch the default interactive session:
 ```bash
-cp .env.example .env
-# Edit .env and add your API keys now
+uv run -m app.main
 ```
 
-**2. Build & Run**
+### Custom User Profile
+Start with a specific user context (loads your personal history/patterns):
 ```bash
+uv run -m app.main --user "Alex"
+```
+
+### Accessibility Mode
+Launch with high-contrast UI and reduced motion/animations:
+```bash
+uv run -m app.main --accessible
+```
+
+### CLI Flags
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--user <name>` | `-u` | Sets the active user profile name (Default: "Friend") |
+| `--accessible` | `-a` | Enables high-contrast, reduced-motion UI |
+| `--quiet` | `-q` | Suppresses startup banner and welcome messages |
+| `--verbose` | `-v` | Shows detailed performance logs and debug info |
+
+### In-App Commands
+Once inside the chat, use these slash commands to interact with the system:
+
+| Command | Description | Example Output |
+|---------|-------------|----------------|
+| `/profile` | View your learned preferences & bio context | `Work: Remote, Sensitivities: Light` |
+| `/patterns` | See discovered wellness rhythms | `Peak Symptom Hour: 10:00 AM` |
+| `/bio <args>` | Simulate biometric data input | `/bio hr=110 sleep=60` |
+| `/model` | Switch AI models dynamically | `Switched to Mistral AI` |
+| `/history` | View recent conversation memories | `Last topic: Magnesium for relief` |
+| `/clear` | Clear the terminal screen | *(Clears screen)* |
+| `/exit` | End the session gracefully | *(Saves state and exits)* |
+
+---
+
+## 🧠 Multimodal Simulation
+
+You can simulate wearable/sensor data directly from the CLI to test the **Real-Time Analytics** engine.
+
+**Example: Simulating High Stress**
+```text
+/bio hr=120 sleep=50 steps=200
+```
+*System Response:* The analytics engine fuses this high heart rate data with your conversation. If you then say *"I feel anxious"*, the system triggers a **Reactive Alert** due to the correlation of physiological and verbal signals.
+
+---
+
+## 🔍 Search & Research
+
+Migru automatically detects when you need external facts.
+
+**Trigger Word:** `define`
+> **You:** "Define prodrome phase."
+>
+> **Migru (Research Agent):**
+> **## Key Findings**
+> *   The **prodrome** is the "pre-headache" phase, occurring hours or days before pain.
+> *   Symptoms include yawning, mood changes, and food cravings.
+> *   Recognizing it can allow for **early intervention**.
+
+---
+
+## 🐳 Docker Usage
+
+Run the full stack (App + Redis) in a container:
+
+```bash
+# 1. Create config
+cp .env.example .env
+
+# 2. Build and Run
 docker-compose up --build
 ```
 
 ---
 
----
+## 🏗️ Architecture Highlights
 
-## 🏗️ Architecture
+*   **Adaptive Context**: Automatically adjusts persona (calm vs. energetic) based on your detected mood.
+*   **Data Fusion**: Correlates chat logs with simulated biometric streams using **Pathway**.
+*   **Redis Pipelining**: Atomic, low-latency updates for real-time pattern tracking.
+*   **Dynamic Routing**: Intelligently switches between "Fast" (Cerebras) and "Smart" (Mistral) models based on query complexity.
 
-### Technology Stack
--   **Framework**: Agno AI (v2.3.24+)
--   **Primary AI**: Cerebras llama3.1-8b (1000+ tokens/sec ⚡)
--   **Fallback AI**: Mistral Small → Gemini 2.0 Flash
--   **Memory**: Redis (Persistent conversation history & context)
--   **Search**: Smart multi-tier fallback (DuckDuckGo → Firecrawl)
--   **UI**: Rich library for beautiful terminal output
-
-### Performance Optimizations
--   **Direct Agent Mode**: 2-3x faster than team coordination
--   **Smart Model Selection**: Cerebras primary for speed, Mistral for quality
--   **Intelligent Fallbacks**: Automatic retry with simplified queries
--   **Streaming Responses**: Instant feedback as AI generates
--   **Optimized Context**: 3 history runs for fast processing
--   **Silent Errors**: Clean UI with no verbose logs
-
-**Result**: 1-3 second responses with high intelligence! 🚀
-
-For detailed performance tuning, see [PERFORMANCE.md](PERFORMANCE.md)
-
----
-
-## 🎯 Key Features
-
-### 🤖 AI Capabilities
-- **Empathetic Conversation**: Gender-neutral, wise companion with childlike curiosity
-- **Research-Backed**: Access to scientific relief techniques and wellness practices
-- **Weather-Aware**: Environmental context for personalized suggestions
-- **Memory**: Remembers your preferences and patterns across sessions
-- **Cultural Knowledge**: Context-aware with evolving understanding
-
-### ⚡ Performance
-- **Ultra-Fast**: 1-3 second responses with Cerebras AI
-- **Reliable**: 3-tier fallback system (never fails)
-- **Smart Search**: Automatic retry with multiple strategies
-- **Streaming**: See responses as they're generated
-- **Low Latency**: Optimized retry delays and context handling
-
-### 🎨 User Experience
-- **Beautiful CLI**: Rich terminal UI with colors and panels
-- **Clean Output**: No error traces or verbose logs
-- **Natural Commands**: Multiple exit options, built-in help
-- **Graceful Errors**: Helpful messages when things go wrong
-- **Calming Design**: Aesthetic matches the caring personality
-
----
-
-## 🛠️ Configuration
-
-### Required API Keys
-- **MISTRAL_API_KEY**: [Get from Mistral AI](https://console.mistral.ai/)
-- **FIRECRAWL_API_KEY**: [Get from Firecrawl](https://www.firecrawl.dev/)
-- **OPENWEATHER_API_KEY**: [Get from OpenWeather](https://openweathermap.org/api)
-
-### Optional (Recommended for Speed)
-- **CEREBRAS_API_KEY**: [Get from Cerebras](https://cerebras.ai/) - Enables ultra-fast responses
-- **OPENROUTER_API_KEY**: [Get from OpenRouter](https://openrouter.ai/) - Emergency fallback
-
-### Tuning Options
-See [PERFORMANCE.md](PERFORMANCE.md) for advanced configuration:
-- Speed vs quality tradeoffs
-- Team mode vs direct agent
-- Context and history settings
-- Model selection strategies
-
----
-
-## 📚 Documentation
-
-- **[PERFORMANCE.md](PERFORMANCE.md)** - Performance optimization guide
-- **[AGENTS.md](AGENTS.md)** - Agent development guidelines
-- **[.env.example](.env.example)** - Configuration template
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Slow Responses (>5 seconds)**
-- Ensure `CEREBRAS_API_KEY` is set in `.env`
-- Check `USE_TEAM = False` in `app/config.py`
-- Verify Redis is running: `redis-cli ping`
-
-**Redis Connection Failed**
-- *Local Mode*: App auto-starts `redis-server`. Ensure Redis is installed.
-- *Docker Mode*: Handled automatically by Docker Compose.
-- Manual start: `redis-server` or `sudo systemctl start redis`
-
-**API Key Errors**
-- Verify `.env` file exists and contains valid keys
-- No quotes needed around values: `MISTRAL_API_KEY=abc123` ✓
-- Check key validity in respective provider dashboards
-
-**Search Failures**
-- App automatically tries multiple search strategies
-- If all searches fail, you'll see a helpful message
-- No ugly error traces thanks to smart error handling
-
----
-
-## 🤝 Contributing
-
-Migru is open for contributions! Areas of interest:
-- Additional relief techniques and wellness practices
-- UI/UX improvements
-- Performance optimizations
-- New AI model integrations
-- Testing and documentation
-
----
-
-## 📝 License
-
-[Your License Here]
-
----
-
-<div align="center">
-
-**Built with 🌸 for wellness and relief**
-
-*Powered by Agno AI • Optimized for speed • Designed for care*
-
-</div>
+For deep performance tuning, see [PERFORMANCE.md](PERFORMANCE.md).

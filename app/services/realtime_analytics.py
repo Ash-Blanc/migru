@@ -9,8 +9,10 @@ This service provides:
 """
 
 import json
-from datetime import datetime, timedelta
-from typing import Any, cast
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import cast
 
 from redis import Redis
 
@@ -37,74 +39,91 @@ class PatternDetector:
         """
         Record an event to the time-series stream.
 
-        Uses Redis Streams for low-latency event recording.
+        Uses Redis Streams and Pipelining for ultra-low latency.
         """
         try:
+            timestamp = datetime.now().isoformat()
             stream_key = f"wellness_stream:{user_id}"
             event_data = {
                 "event_type": event_type,
                 "content": content,
                 "metadata": json.dumps(metadata or {}),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": timestamp,
             }
 
-            # Add to Redis stream
-            self.redis_client.xadd(stream_key, cast(dict[Any, Any], event_data), maxlen=1000)  # Keep last 1000 events
-            self.logger.debug(f"Recorded {event_type} event for {user_id}")
+            # Use pipeline for atomic, single-round-trip execution
+            pipeline = self.redis_client.pipeline()
 
-            # Update recent patterns
-            self._update_recent_patterns(user_id, event_type, metadata)
+            # 1. Add to Redis stream (capped at 1000 events)
+            pipeline.xadd(stream_key, cast(dict[Any, Any], event_data), maxlen=1000)
+
+            # 2. Update patterns atomically (no read-modify-write)
+            self._queue_pattern_updates(pipeline, user_id, event_type, metadata)
+
+            # Execute all commands
+            pipeline.execute()
+            
+            self.logger.debug(f"Recorded {event_type} event for {user_id} (pipelined)")
 
         except Exception as e:
-            self.logger.error(f"Error recording event: {e}")
+            self.logger.debug(f"Error recording event: {e}")
 
-    def _update_recent_patterns(
-        self, user_id: str, event_type: str, metadata: dict[str, Any] | None
+    def record_biometric(
+        self,
+        user_id: str,
+        heart_rate: int,
+        sleep_score: int = 80,
+        step_count: int = 5000
     ) -> None:
-        """Update incremental pattern statistics."""
+        """
+        Record a biometric event to the biometric stream.
+        Useful for simulating wearable data from the CLI.
+        """
         try:
-            pattern_key = f"patterns:{user_id}"
-            current_hour = datetime.now().hour
+            timestamp = datetime.now().isoformat()
+            stream_key = f"biometric_stream:{user_id}"
+            event_data = {
+                "user_id": user_id,
+                "heart_rate": heart_rate,
+                "sleep_score": sleep_score,
+                "step_count": step_count,
+                "timestamp": timestamp,
+            }
+            
+            # Simple add, no pattern updates needed for raw bio yet
+            self.redis_client.xadd(stream_key, cast(dict[Any, Any], event_data), maxlen=1000)
+            self.logger.debug(f"Recorded biometric event for {user_id}: HR={heart_rate}")
 
-            # Get or initialize patterns
-            raw_patterns = self.redis_client.hgetall(pattern_key)
-            if not raw_patterns:
-                patterns: dict[str, str] = {}
-            else:
-                # Decode bytes to strings if needed
-                patterns = {
-                    k.decode() if isinstance(k, bytes) else str(k): v.decode()
-                    if isinstance(v, bytes)
-                    else str(v)
-                    for k, v in cast(dict[Any, Any], raw_patterns).items()
-                }
+        except Exception as e:
+            self.logger.debug(f"Error recording biometric: {e}")
 
-            # Update hourly symptom counts
-            if event_type == "symptom":
-                hour_key = f"symptoms_hour_{current_hour}"
-                patterns[hour_key] = str(int(patterns.get(hour_key, "0")) + 1)
+    def _queue_pattern_updates(
+        self, pipeline: Any, user_id: str, event_type: str, metadata: dict[str, Any] | None
+    ) -> None:
+        """Queue atomic pattern updates into the pipeline."""
+        pattern_key = f"patterns:{user_id}"
+        current_hour = datetime.now().hour
 
-            # Update weather correlations
-            if event_type == "symptom" and metadata and "weather_pressure" in metadata:
+        # Atomic increments - eliminates race conditions and round-trips
+        if event_type == "symptom":
+            # Increment hourly bucket
+            hour_key = f"symptoms_hour_{current_hour}"
+            pipeline.hincrby(pattern_key, hour_key, 1)
+
+            # Update weather correlations if data exists
+            if metadata and "weather_pressure" in metadata:
                 pressure = metadata["weather_pressure"]
                 if pressure < 1010:
-                    patterns["low_pressure_symptoms"] = str(
-                        int(patterns.get("low_pressure_symptoms", "0")) + 1
-                    )
+                    pipeline.hincrby(pattern_key, "low_pressure_symptoms", 1)
                 else:
-                    patterns["high_pressure_symptoms"] = str(
-                        int(patterns.get("high_pressure_symptoms", "0")) + 1
-                    )
+                    pipeline.hincrby(pattern_key, "high_pressure_symptoms", 1)
 
-            # Store updated patterns
-            if patterns:
-                self.redis_client.hset(pattern_key, mapping=cast(dict[Any, Any], patterns))
+        # Extend TTL
+        pipeline.expire(pattern_key, 30 * 24 * 3600)
 
-            # Set expiry (30 days)
-            self.redis_client.expire(pattern_key, 30 * 24 * 3600)
-
-        except Exception as e:
-            self.logger.error(f"Error updating patterns: {e}")
+    def _update_recent_patterns(self, *args, **kwargs):
+        """Deprecated: Replaced by _queue_pattern_updates"""
+        pass
 
     def get_temporal_patterns(self, user_id: str) -> dict[str, Any]:
         """

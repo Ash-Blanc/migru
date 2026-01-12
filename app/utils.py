@@ -32,9 +32,17 @@ def memory_usage_decorator(func: Callable) -> Callable:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
+        psutil = None
         try:
             import psutil  # type: ignore
+        except ImportError:
+            pass
 
+        if psutil is None:
+            # psutil not available, just run the function
+            return func(*args, **kwargs)
+
+        try:
             process = psutil.Process()
             memory_before = process.memory_info().rss / 1024 / 1024  # MB
 
@@ -46,9 +54,17 @@ def memory_usage_decorator(func: Callable) -> Callable:
                 f"{func.__name__} memory usage: {memory_before:.1f}MB -> {memory_after:.1f}MB ({memory_diff:+.1f}MB)"
             )
             return result
-        except ImportError:
-            # psutil not available, just run the function
-            return func(*args, **kwargs)
+        except Exception:
+            # If psutil fails for any other reason, just return the result or re-raise if strictly needed
+            # But since this is a decorator, we should try not to break the main function if monitoring fails
+            # However, if func() itself raises, we want that to bubble up.
+            # The previous logic allowed func() to run. 
+            # If func() ran above, we already returned result. 
+            # So this except block catches errors in psutil usage or func() execution if we wrap the whole thing.
+            
+            # Let's keep it simple: if psutil is imported, try to use it around the call.
+            # If func fails, it will bubble up.
+            raise 
 
     return wrapper
 

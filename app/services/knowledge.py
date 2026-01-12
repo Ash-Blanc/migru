@@ -24,14 +24,16 @@ class KnowledgeGraphService:
         key = f"edge:{subject_id}:{relation}"
         # smembers returns set of bytes if decode_responses is False,
         # but RedisDb initializes it with decode_responses=True by default for db_url
-        from typing import Any, cast
+        from typing import Any
+        from typing import cast
         members = cast(Any, db.redis_client.smembers(key))
         return [x if isinstance(x, str) else x.decode('utf-8') for x in members]
 
     def get_node(self, node_id: str, label: str) -> dict:
         """Retrieves node attributes."""
         key = f"node:{label}:{node_id}"
-        from typing import Any, cast
+        from typing import Any
+        from typing import cast
         raw = cast(Any, db.redis_client.hgetall(key))
         return {k if isinstance(k, str) else k.decode('utf-8'): v if isinstance(v, str) else v.decode('utf-8') for k, v in raw.items()}
 

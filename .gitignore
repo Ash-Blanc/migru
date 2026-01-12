@@ -142,3 +142,5 @@ dmypy.json
 # === Keep Examples ===
 !.env.example
 !config.example.py
+.aider*
+.env

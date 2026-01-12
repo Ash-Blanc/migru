@@ -18,17 +18,18 @@ class Config:
 
     # Models (optimized for speed and intelligence)
     # Strategy: Use fastest models, fallback to Mistral for quality
-    MODEL_PRIMARY = "cerebras:llama3.1-8b"  # Blazing fast (1000+ tok/s)
-    MODEL_SMART = "mistral:mistral-small-latest"  # Fast + intelligent fallback
+    MODEL_PRIMARY = "mistral:mistral-small-latest"  # User requested default
+    MODEL_SMART = "mistral:mistral-small-latest"  # High intelligence
+    MODEL_FAST = "cerebras:llama3.1-8b"           # Ultra-low latency
     MODEL_RESEARCH = "mistral:mistral-small-latest"  # Fast research
-    MODEL_FALLBACK_TIER2 = "openrouter:google/gemini-2.0-flash-exp"  # Fast fallback
+    MODEL_FALLBACK_TIER2 = "openrouter:arcee-ai/trinity-mini:free"  # Fast fallback
 
     # Legacy model names (for compatibility)
     MODEL_SMALL = "cerebras:llama3.1-8b"
     MODEL_MEDIUM = "mistral:mistral-small-latest"
     MODEL_LARGE = "mistral:mistral-small-latest"
     MODEL_FALLBACK = "mistral:mistral-small-latest"
-    MODEL_OPENROUTER_FALLBACK = "openrouter:google/gemini-2.0-flash-exp"
+    MODEL_OPENROUTER_FALLBACK = "openrouter:arcee-ai/trinity-mini:free"
 
     # Resilience Settings (optimized for speed)
     RETRIES = 2  # Reduced for faster failures
@@ -36,8 +37,24 @@ class Config:
     EXPONENTIAL_BACKOFF = True
 
     # Performance Settings
-    STREAMING = True  # Always stream for perceived speed
+    STREAMING = False  # Disabled due to rendering repetitions in CLI
     USE_TEAM = False  # Direct agent is faster than team coordination
+
+    # UI & Accessibility Settings
+    ACCESSIBILITY_MODE = False
+    
+    class UI:
+        """UI Configuration"""
+        REFRESH_RATE = 12
+        SPINNER_STYLE = "dots"
+        ANIMATION_SPEED = 0.05
+        THEME = {
+            "prompt": "#ansigreen bold",
+            "input": "#ansiwhite",
+            "toolbar": "#ansigray italic",
+            "panel_border": "magenta",
+            "title": "bold magenta",
+        }
 
     def validate(self) -> None:
         if not self.MISTRAL_API_KEY:

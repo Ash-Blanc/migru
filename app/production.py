@@ -10,7 +10,8 @@ This module provides:
 
 import os
 import sys
-from typing import Any, cast
+from typing import Any
+from typing import cast
 
 from app.logger import get_logger
 
