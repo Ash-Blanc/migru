@@ -33,6 +33,9 @@ dependencies = [
     "openai>=2.15.0",
     "prompt_toolkit>=3.0.0",
     "psutil>=7.2.1",
+    "pyarrow>=18.1.0",
+    "typer>=0.9.0",
+    "httpx>=0.25.0",              # HTTP client for local LLM APIs
 ]
 
 [project.optional-dependencies]
@@ -48,8 +51,14 @@ dev = [
     "psutil>=5.9.0",
 ]
 
+# Local LLM support (for enhanced privacy)
+local = [
+    "ollama>=0.1.0",                     # Ollama client (optional)
+    "llama-cpp-python>=0.2.0",           # Direct llama.cpp support (optional)
+]
+
 [project.scripts]
-migru = "app.main:main"
+migru = "app.main:app"
 
 [project.urls]
 Homepage = "https://github.com/Ash-Blanc/migru"

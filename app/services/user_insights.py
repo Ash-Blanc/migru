@@ -54,8 +54,8 @@ class InsightExtractor:
         """Extract age-related hints from message."""
         message_lower = message.lower()
 
-        # College/university mentions
-        if any(word in message_lower for word in ["college", "university", "semester", "dorm"]):
+        # College/university/student mentions (Expanded for CS/IT/BCA)
+        if any(word in message_lower for word in ["college", "university", "semester", "dorm", "bca", "cs", "it student", "assignment", "lab", "viva", "exam", "finals"]):
             return {"age_range": "late teens/early 20s", "life_phase": "student"}
 
         # Career mentions

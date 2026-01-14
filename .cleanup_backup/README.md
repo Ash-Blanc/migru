@@ -2,34 +2,6 @@
 
 Migru is a **local-first**, personal, and private AI-powered companion designed to support you through migraines and stress with empathy and research-backed relief strategies. It combines ultra-fast responses with deep, personalized wisdom, while keeping your data under your control.
 
-## 🌟 Project Overview
-
-**Migru** is a warm, AI-powered companion designed to support users through migraines and stress. It prioritizes empathy, research-backed relief strategies, and ultra-fast performance.
-Now enhanced for the **Kaggle Med-Gemma Impact Challenge** using Google's **Gemma 2**.
-
-- **Primary Mission**: To walk alongside users with a "wise, humble, and deeply curious" persona, helping them discover wellness patterns.
-- **Key Technologies**:
-    - **Language**: Python 3.12+ (managed with `uv`)
-    - **Agent Framework**: [Agno AI](https://agno.com) (formerly Phidata)
-    - **AI Models**: 
-        - **Local**: Google **Gemma 2 (9B)** for clinical insights (Med-Gemma).
-        - **Cloud Fallback**: Mistral Small, Cerebras (llama3.1-8b).
-    - **Privacy**: 100% Local "Edge AI" mode available.
-    - **Database/Memory**: Redis (Conversation history, user profiles, and real-time pattern detection).
-    - **Streaming Analytics**: [Pathway](https://pathway.com) for low-latency pattern recognition.
-    - **UI**: [Rich](https://github.com/Textualize/rich) for a beautiful terminal-based interface.
-
-## 🌟 Key Features
-
-- **🔒 Privacy-First Design**: Complete local AI processing option with FunctionGemma, Qwen2.5, and other models
-- **🧠 Smart Agent Routing**: Intelligent agent selection for optimal responses
-- **🌿 Empathetic Conversations**: Therapeutic support optimized for wellness
-- **⚡ Ultra-Fast Responses**: Local inference eliminates network latency (1-3 seconds with Cerebras)
-- **🔍 Optional Web Search**: Privacy-aware research tools only when you need them
-- **📊 Real-time Analytics**: Pattern detection and wellness insights with Pathway
-- **🎨 Beautiful CLI**: Rich themes and accessibility features
-- **💾 Local-First Storage**: Your data stays on your device with Redis
-
 ## ✨ Showcase
 
 <div align="center">
@@ -70,25 +42,60 @@ Now enhanced for the **Kaggle Med-Gemma Impact Challenge** using Google's **Gemm
 
 ---
 
-## 🚀 Building and Running
+## 🛠️ Installation
 
 ### Prerequisites
 - Python 3.12+
+- Redis (local or Docker)
 - `uv` package manager
-- Redis server (local)
-- Ollama (for local models) -> `ollama pull gemma2:9b`
 
-### Key Commands
-- **Install (Global)**: `uv tool install -e . --python 3.12` (local dev) or `uv tool install migru --python 3.12` (published)
-- **Run (Therapeutic)**: `migru` or `uv run -m app.main`
-- **Run (Work Mode)**: `migru --work`
-- **Medical Analysis**: Use `/med` command in chat.
-- **Run (Source)**: `uv run -m app.main`
-- **Test**: `pytest` (Configured in `pyproject.toml`)
-- **Lint**: `ruff check .`
-- **Type Check**: `mypy app/`
+## 📁 Project Structure
 
-## 🛠️ Development Conventions
+The project has been refactored for better organization and maintainability:
+
+```
+app/
+├── cli/                  # CLI components (new!)
+│   ├── command_palette.py # Command palette and UI components
+│   ├── session.py         # CLI session management
+│   └── README.md          # CLI documentation
+├── services/             # Business logic services
+├── agents.py             # Agent definitions and factories
+├── config.py             # Configuration management
+├── main.py               # Application entry point
+└── ...                   # Other core modules
+```
+
+### Key Improvements
+
+1. **Modular CLI Architecture**: Separated CLI components into dedicated modules
+2. **Enhanced Error Handling**: Comprehensive error handling with user-friendly messages
+3. **Performance Optimization**: Lazy loading and service caching
+4. **Improved Testing**: Comprehensive unit tests for CLI components
+5. **Better Documentation**: Detailed documentation for all modules
+
+## 🧪 Testing
+
+The project includes comprehensive tests:
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run specific test modules
+pytest tests/unit/test_cli.py       # CLI component tests
+pytest tests/unit/test_agents.py    # Agent tests
+pytest tests/unit/test_config.py    # Configuration tests
+```
+
+### Test Coverage
+
+- **CLI Components**: Command palette, session handlers, error handling
+- **Agents**: Agent creation, routing, error handling
+- **Configuration**: Validation, environment variables
+- **Services**: Pattern detection, user insights, context management
+
+## 🔧 Development
 
 ### Code Quality
 
@@ -143,19 +150,10 @@ migru
 ### 2. Configure Environment
 Create a `.env` file in your working directory with your API keys:
 ```env
-# Cloud AI Providers (Default Mode)
 MISTRAL_API_KEY=...     # Primary Intelligence
-CEREBRAS_API_KEY=...    # Ultra-Fast Responses (Recommended)
-OPENROUTER_API_KEY=...  # Fallback Provider
-
-# Optional: Web Search & Weather
 FIRECRAWL_API_KEY=...   # Deep Research
 OPENWEATHER_API_KEY=... # Environmental Context
-
-# Optional: Local LLM (See Local LLM Support section)
-LOCAL_LLM_ENABLED=false
-LOCAL_LLM_HOST=http://localhost:8080
-PRIVACY_MODE=cloud
+CEREBRAS_API_KEY=...    # Ultra-Fast Responses (Recommended)
 ```
 
 ---
@@ -172,11 +170,7 @@ migru
 
 Or run from source:
 ```bash
-# Standard mode (cloud AI)
 uv run -m app.main
-
-# Enhanced mode (with local LLM support)
-uv run -m app.main_enhanced
 ```
 
 ### Custom User Profile
@@ -211,18 +205,6 @@ Once inside the chat, use these slash commands to interact with the system:
 | `/history` | View recent conversation memories | `Last topic: Magnesium for relief` |
 | `/clear` | Clear the terminal screen | *(Clears screen)* |
 | `/exit` | End the session gracefully | *(Saves state and exits)* |
-
-### Local LLM Commands (When Enabled)
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/privacy status` | Check current privacy settings | Shows local/hybrid/cloud mode |
-| `/privacy local` | Switch to 100% private mode | Disables all external APIs |
-| `/privacy hybrid` | Local AI + optional search | Balance privacy and features |
-| `/local status` | Show current local model | `Using Qwen2.5:3B` |
-| `/local models` | List available local models | Shows all downloaded models |
-| `/local switch <model>` | Switch local models | `/local switch qwen2.5:3b` |
-| `/local test` | Test local LLM connection | Verifies server is running |
 
 ---
 

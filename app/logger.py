@@ -54,7 +54,7 @@ def log_function_calls(logger: logging.Logger) -> Callable:
 def suppress_verbose_logging() -> None:
     """Suppress verbose logging from third-party libraries and Agno tools."""
     
-    # Aggressively silence agno loggers
+    # Aggressively silence agno loggers and AI providers
     loggers_to_silence = [
         "agno",
         "agno.tools",
@@ -65,13 +65,22 @@ def suppress_verbose_logging() -> None:
         "agno.db",
         "agno.storage",
         "agno.utils",
+        "agno.models",
+        "agno.models.base",
+        "agno.agent.agent",
         "redis",
         "httpx",
         "httpcore", 
         "ddgs",
         "firecrawl",
         "requests",
-        "urllib3"
+        "urllib3",
+        "mistralai",
+        "cerebras",
+        "cerebras_cloud_sdk",
+        "openai",
+        "pathway",
+        "youtube_transcript_api",
     ]
 
     for logger_name in loggers_to_silence:
@@ -83,15 +92,17 @@ def suppress_verbose_logging() -> None:
 
     # Brute force: check all existing loggers
     for name in logging.root.manager.loggerDict:
-        if name.startswith("agno") or name.startswith("redis"):
+        if any(name.startswith(prefix) for prefix in ["agno", "redis", "mistral", "cerebras", "openai"]):
             logger = logging.getLogger(name)
             logger.setLevel(logging.CRITICAL)
             logger.handlers = []
             logger.propagate = False
             logger.addHandler(logging.NullHandler())
 
-    # Suppress all function execution warnings
+    # Suppress all function execution warnings and retry warnings
     logging.getLogger("agno.tools.function").setLevel(logging.CRITICAL)
+    logging.getLogger("agno.agent.run").setLevel(logging.CRITICAL)
+    logging.getLogger("agno.models.retry").setLevel(logging.CRITICAL)
 
     # Keep only warnings and errors visible for user-facing logs (unless overridden by main)
     # But since we want to be very quiet, we let main handle the root logger level.
